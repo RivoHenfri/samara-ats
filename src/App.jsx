@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard'
 import KanbanBoard from './components/KanbanBoard'
 import CandidatesList from './components/CandidatesList'
 import TCOWCalculator from './components/TCOWCalculator'
+import RolesManager from './components/RolesManager'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -37,6 +38,7 @@ export default function App() {
     dashboard: <Dashboard />,
     pipeline: <KanbanBoard />,
     candidates: <CandidatesList />,
+    roles: <RolesManager />,
     tcow: <TCOWCalculator />,
   }
 
