@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Search, Phone, Mail } from 'lucide-react'
+import { Search, MessageCircle } from 'lucide-react'
 
 const stageColors = {
   New: 'bg-gray-600',
@@ -9,6 +9,54 @@ const stageColors = {
   Offer: 'bg-purple-600',
   Hired: 'bg-emerald-600',
   Rejected: 'bg-red-600',
+}
+
+function getWhatsAppMessage(candidate, role, lang) {
+  const name = candidate?.full_name?.split(' ')[0] || 'there'
+  const roleTitle = role?.title || 'the position'
+
+  if (lang === 'id') {
+    return `Halo ${name}, perkenalkan saya Satya dari Samara Lombok. Kami telah meninjau lamaran Anda untuk posisi ${roleTitle} dan ingin berdiskusi lebih lanjut. Apakah Anda ada waktu untuk ngobrol sebentar?`
+  }
+  return `Hi ${name}, this is Satya from Samara Lombok. We reviewed your application for ${roleTitle} and would love to connect. Are you available for a quick chat?`
+}
+
+function WhatsAppButton({ candidate, role }) {
+  const [lang, setLang] = useState('id')
+
+  const handleClick = () => {
+    const raw = candidate?.whatsapp || ''
+    // Normalize: strip spaces/dashes, ensure starts with 62
+    let number = raw.replace(/[\s\-\(\)]/g, '')
+    if (number.startsWith('0')) number = '62' + number.slice(1)
+    if (number.startsWith('+')) number = number.slice(1)
+
+    const message = getWhatsAppMessage(candidate, role, lang)
+    const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      {/* Language toggle */}
+      <button
+        onClick={() => setLang(lang === 'id' ? 'en' : 'id')}
+        className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors font-mono"
+        title="Toggle language"
+      >
+        {lang === 'id' ? 'ID' : 'EN'}
+      </button>
+      {/* WhatsApp button */}
+      <button
+        onClick={handleClick}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors font-medium"
+        title={`Send WhatsApp in ${lang === 'id' ? 'Bahasa Indonesia' : 'English'}`}
+      >
+        <MessageCircle size={14} />
+        WA
+      </button>
+    </div>
+  )
 }
 
 export default function CandidatesList() {
@@ -78,47 +126,39 @@ export default function CandidatesList() {
               <th className="text-left text-gray-400 text-sm px-4 py-3">Name</th>
               <th className="text-left text-gray-400 text-sm px-4 py-3">Role</th>
               <th className="text-left text-gray-400 text-sm px-4 py-3">Dept</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Origin</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Contact</th>
               <th className="text-left text-gray-400 text-sm px-4 py-3">Stage</th>
+              <th className="text-left text-gray-400 text-sm px-4 py-3">Origin</th>
+              <th className="text-left text-gray-400 text-sm px-4 py-3">WhatsApp</th>
+              <th className="text-left text-gray-400 text-sm px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(app => (
               <tr key={app.id} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
                 <td className="px-4 py-3 text-white font-medium">{app.candidates?.full_name}</td>
-                <td className="px-4 py-3 text-gray-300 text-sm">{app.roles?.title}</td>
+                <td className="px-4 py-3 text-gray-300">{app.roles?.title}</td>
                 <td className="px-4 py-3 text-gray-400 text-sm">{app.roles?.department}</td>
-                <td className="px-4 py-3 text-gray-400 text-sm">{app.candidates?.origin}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    {app.candidates?.whatsapp && (
-                      <a href={`https://wa.me/${app.candidates.whatsapp}`} target="_blank" rel="noreferrer"
-                        className="text-emerald-400 hover:text-emerald-300">
-                        <Phone size={14} />
-                      </a>
-                    )}
-                    {app.candidates?.email && (
-                      <a href={`mailto:${app.candidates.email}`} className="text-blue-400 hover:text-blue-300">
-                        <Mail size={14} />
-                      </a>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`text-xs text-white px-2 py-1 rounded-full ${stageColors[app.stage]}`}>
+                  <span className={`text-xs px-2 py-1 rounded-full text-white ${stageColors[app.stage] || 'bg-gray-600'}`}>
                     {app.stage}
                   </span>
                 </td>
+                <td className="px-4 py-3 text-gray-400 text-sm">{app.candidates?.origin}</td>
+                <td className="px-4 py-3 text-gray-400 text-sm font-mono">{app.candidates?.whatsapp || '—'}</td>
+                <td className="px-4 py-3">
+                  {app.candidates?.whatsapp ? (
+                    <WhatsAppButton candidate={app.candidates} role={app.roles} />
+                  ) : (
+                    <span className="text-gray-600 text-xs">No number</span>
+                  )}
+                </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">No candidates found</td>
-              </tr>
-            )}
           </tbody>
         </table>
+        {filtered.length === 0 && (
+          <div className="text-center text-gray-500 py-12">No candidates found</div>
+        )}
       </div>
     </div>
   )
