@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Clock, MessageCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Clock, MessageCircle, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { supabase } from '../lib/supabase'
+import CandidateDetail from './CandidateDetail'
 
 function getWhatsAppMessage(candidate, role, stage, lang) {
   const name = candidate?.full_name?.split(' ')[0] || 'there'
@@ -63,14 +65,13 @@ function WhatsAppButton({ candidate, role, stage }) {
       <button
         onClick={handleToggle}
         className="text-xs px-1.5 py-0.5 rounded bg-gray-600 text-gray-300 hover:bg-gray-500 transition-colors font-mono leading-none"
-        title="Toggle language"
       >
         {lang === 'id' ? 'ID' : 'EN'}
       </button>
       <button
         onClick={handleClick}
         className="p-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
-        title={`WhatsApp (${lang === 'id' ? 'Bahasa Indonesia' : 'English'}) — ${stage} message`}
+        title={`WhatsApp (${lang === 'id' ? 'Bahasa' : 'English'}) — ${stage}`}
       >
         <MessageCircle size={13} />
       </button>
@@ -80,6 +81,22 @@ function WhatsAppButton({ candidate, role, stage }) {
 
 export default function CandidateCard({ app, onDragStart }) {
   if (!app) return null
+
+  const [showDetail, setShowDetail] = useState(false)
+  const [noteCount, setNoteCount] = useState(0)
+
+  useEffect(() => {
+    fetchNoteCount()
+  }, [app.id])
+
+  const fetchNoteCount = async () => {
+    const { count } = await supabase
+      .from('notes')
+      .select('id', { count: 'exact' })
+      .eq('application_id', app.id)
+    setNoteCount(count || 0)
+  }
+
   const isStagnant = () => {
     if (!app?.updated_at) return false
     const updated = new Date(app.updated_at)
@@ -88,40 +105,71 @@ export default function CandidateCard({ app, onDragStart }) {
   }
 
   return (
-    <div
-      draggable
-      onDragStart={() => onDragStart(app)}
-      className={`bg-gray-700 rounded-lg p-3 cursor-grab active:cursor-grabbing border ${
-        isStagnant() ? 'border-orange-500/60' : 'border-transparent'
-      } hover:border-gray-500 transition-colors`}
-    >
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <p className="text-white text-sm font-medium leading-tight">{app.candidates?.full_name}</p>
-        <WhatsAppButton
-          candidate={app.candidates}
-          role={app.roles}
-          stage={app.stage}
-        />
-      </div>
+    <>
+      <div
+        draggable
+        onDragStart={() => onDragStart(app)}
+        className={`bg-gray-700 rounded-lg p-3 cursor-grab active:cursor-grabbing border ${
+          isStagnant() ? 'border-orange-500/60' : 'border-transparent'
+        } hover:border-gray-500 transition-colors`}
+      >
+        {/* Name + WA button row */}
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p
+            className="text-white text-sm font-medium leading-tight hover:text-emerald-400 cursor-pointer transition-colors"
+            onClick={(e) => { e.stopPropagation(); setShowDetail(true) }}
+          >
+            {app.candidates?.full_name}
+          </p>
+          <WhatsAppButton
+            candidate={app.candidates}
+            role={app.roles}
+            stage={app.stage}
+          />
+        </div>
 
-      <p className="text-gray-400 text-xs mb-2">{app.roles?.title}</p>
+        {/* Role */}
+        <p className="text-gray-400 text-xs mb-2">{app.roles?.title}</p>
 
-      <div className="flex items-center justify-between">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${
-          app.candidates?.origin === 'Lombok Local'
-            ? 'bg-emerald-900/50 text-emerald-400'
-            : 'bg-gray-600 text-gray-400'
-        }`}>
-          {app.candidates?.origin === 'Lombok Local' ? '🏝️ Local' : '📍 Outside'}
-        </span>
-
-        {isStagnant() && (
-          <span className="flex items-center gap-1 text-orange-400 text-xs">
-            <Clock size={10} />
-            {formatDistanceToNow(new Date(app.updated_at), { addSuffix: true })}
+        {/* Footer */}
+        <div className="flex items-center justify-between">
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            app.candidates?.origin === 'Lombok Local'
+              ? 'bg-emerald-900/50 text-emerald-400'
+              : 'bg-gray-600 text-gray-400'
+          }`}>
+            {app.candidates?.origin === 'Lombok Local' ? '🏝️ Local' : '📍 Outside'}
           </span>
-        )}
+
+          <div className="flex items-center gap-2">
+            {/* Note count badge */}
+            {noteCount > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowDetail(true) }}
+                className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+              >
+                <FileText size={11} />
+                <span className="text-xs">{noteCount}</span>
+              </button>
+            )}
+
+            {isStagnant() && (
+              <span className="flex items-center gap-1 text-orange-400 text-xs">
+                <Clock size={10} />
+                {formatDistanceToNow(new Date(app.updated_at), { addSuffix: true })}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Detail Panel */}
+      {showDetail && (
+        <CandidateDetail
+          app={app}
+          onClose={() => { setShowDetail(false); fetchNoteCount() }}
+        />
+      )}
+    </>
   )
 }
