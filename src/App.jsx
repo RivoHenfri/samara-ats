@@ -7,6 +7,7 @@ import KanbanBoard from './components/KanbanBoard'
 import CandidatesList from './components/CandidatesList'
 import TCOWCalculator from './components/TCOWCalculator'
 import RolesManager from './components/RolesManager'
+import Analytics from './components/Analytics'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -18,11 +19,9 @@ export default function App() {
       setSession(session)
       setLoading(false)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -40,6 +39,7 @@ export default function App() {
     candidates: <CandidatesList />,
     roles: <RolesManager />,
     tcow: <TCOWCalculator />,
+    analytics: <Analytics />,
   }
 
   return (

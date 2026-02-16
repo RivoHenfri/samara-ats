@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { LayoutDashboard, Users, Briefcase, Calculator, LogOut, Menu, X, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Users, Briefcase, Calculator, LogOut, Menu, X, ClipboardList, BarChart2 } from 'lucide-react'
 
 export default function Layout({ children, currentPage, setCurrentPage }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -11,6 +11,7 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
     { id: 'candidates', label: 'Candidates', icon: Briefcase },
     { id: 'roles', label: 'Roles', icon: ClipboardList },
     { id: 'tcow', label: 'TCOW Calculator', icon: Calculator },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
   ]
 
   return (
