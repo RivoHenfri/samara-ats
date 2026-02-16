@@ -1,42 +1,127 @@
+import { useState } from 'react'
+import { Clock, MessageCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { Phone, Mail, MapPin, AlertTriangle } from 'lucide-react'
 
-export default function CandidateCard({ application, onClick }) {
-  const { candidates: candidate, roles: role, stage, last_stage_change_at } = application
+function getWhatsAppMessage(candidate, role, stage, lang) {
+  const name = candidate?.full_name?.split(' ')[0] || 'there'
+  const roleTitle = role?.title || 'the position'
 
-  const hoursStagnant = (new Date() - new Date(last_stage_change_at)) / 36e5
-  const isStagnant = hoursStagnant > 48 && !['Offer', 'Hired', 'Rejected'].includes(stage)
+  const templates = {
+    New: {
+      en: `Hi ${name}, this is Satya from Samara Lombok. We received your application for ${roleTitle} and would love to learn more about you. Are you available for a quick chat?`,
+      id: `Halo ${name}, perkenalkan saya Satya dari Samara Lombok. Kami menerima lamaran Anda untuk posisi ${roleTitle} dan ingin mengenal Anda lebih lanjut. Apakah Anda ada waktu untuk ngobrol sebentar?`,
+    },
+    Screening: {
+      en: `Hi ${name}, this is Satya from Samara Lombok. We'd like to schedule a screening call for the ${roleTitle} role. When are you available this week?`,
+      id: `Halo ${name}, ini Satya dari Samara Lombok. Kami ingin menjadwalkan sesi screening untuk posisi ${roleTitle}. Kapan Anda tersedia minggu ini?`,
+    },
+    Interview: {
+      en: `Hi ${name}, this is Satya from Samara Lombok. Great news — we'd like to invite you for an interview for the ${roleTitle} position. Please let us know your availability.`,
+      id: `Halo ${name}, ini Satya dari Samara Lombok. Kabar baik — kami ingin mengundang Anda untuk interview posisi ${roleTitle}. Mohon informasikan ketersediaan waktu Anda.`,
+    },
+    Offer: {
+      en: `Hi ${name}, this is Satya from Samara Lombok. We're excited to move forward with you for the ${roleTitle} role. Can we schedule a call to discuss the offer details?`,
+      id: `Halo ${name}, ini Satya dari Samara Lombok. Kami senang ingin melanjutkan proses dengan Anda untuk posisi ${roleTitle}. Bisakah kita jadwalkan panggilan untuk membahas detail penawaran?`,
+    },
+    Hired: {
+      en: `Hi ${name}, congratulations and welcome to Samara Lombok! We're thrilled to have you joining us as ${roleTitle}. We'll be in touch soon with your onboarding details.`,
+      id: `Halo ${name}, selamat dan selamat datang di Samara Lombok! Kami sangat senang Anda bergabung sebagai ${roleTitle}. Kami akan segera menghubungi Anda dengan detail onboarding.`,
+    },
+    Rejected: {
+      en: `Hi ${name}, this is Satya from Samara Lombok. Thank you for your interest in the ${roleTitle} role. After careful consideration, we'll be moving forward with other candidates. We wish you all the best!`,
+      id: `Halo ${name}, ini Satya dari Samara Lombok. Terima kasih atas minat Anda pada posisi ${roleTitle}. Setelah pertimbangan matang, kami akan melanjutkan dengan kandidat lain. Semoga sukses selalu!`,
+    },
+  }
 
-  const originColors = {
-    'Lombok Local': 'text-emerald-400',
-    'Indonesian Expat': 'text-blue-400',
-    'International': 'text-purple-400',
+  const template = templates[stage] || templates.New
+  return lang === 'id' ? template.id : template.en
+}
+
+function WhatsAppButton({ candidate, role, stage }) {
+  const [lang, setLang] = useState('id')
+
+  const handleClick = (e) => {
+    e.stopPropagation()
+    const raw = candidate?.whatsapp || ''
+    let number = raw.replace(/[\s\-\(\)]/g, '')
+    if (number.startsWith('0')) number = '62' + number.slice(1)
+    if (number.startsWith('+')) number = number.slice(1)
+    const message = getWhatsAppMessage(candidate, role, stage, lang)
+    const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+  }
+
+  const handleToggle = (e) => {
+    e.stopPropagation()
+    setLang(lang === 'id' ? 'en' : 'id')
+  }
+
+  if (!candidate?.whatsapp) return null
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={handleToggle}
+        className="text-xs px-1.5 py-0.5 rounded bg-gray-600 text-gray-300 hover:bg-gray-500 transition-colors font-mono leading-none"
+        title="Toggle language"
+      >
+        {lang === 'id' ? 'ID' : 'EN'}
+      </button>
+      <button
+        onClick={handleClick}
+        className="p-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
+        title={`WhatsApp (${lang === 'id' ? 'Bahasa Indonesia' : 'English'}) — ${stage} message`}
+      >
+        <MessageCircle size={13} />
+      </button>
+    </div>
+  )
+}
+
+export default function CandidateCard({ app, onDragStart }) {
+  if (!app) return null
+  const isStagnant = () => {
+    if (!app?.updated_at) return false
+    const updated = new Date(app.updated_at)
+    const hours = (Date.now() - updated) / (1000 * 60 * 60)
+    return hours > 48
   }
 
   return (
     <div
-      onClick={onClick}
-      className={`bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-600 transition-colors border-l-4 ${
-        isStagnant ? 'border-red-500' : 'border-transparent'
-      }`}
+      draggable
+      onDragStart={() => onDragStart(app)}
+      className={`bg-gray-700 rounded-lg p-3 cursor-grab active:cursor-grabbing border ${
+        isStagnant() ? 'border-orange-500/60' : 'border-transparent'
+      } hover:border-gray-500 transition-colors`}
     >
-      {isStagnant && (
-        <div className="flex items-center gap-1 text-red-400 text-xs mb-2">
-          <AlertTriangle size={12} />
-          <span>STAGNANT {Math.floor(hoursStagnant)}h</span>
-        </div>
-      )}
-      <p className="text-white font-medium text-sm truncate">{candidate?.full_name}</p>
-      <p className="text-gray-400 text-xs truncate mb-2">{role?.title}</p>
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className={`text-xs font-medium ${originColors[candidate?.origin] || 'text-gray-400'}`}>
-          <MapPin size={10} className="inline mr-1" />
-          {candidate?.origin}
-        </span>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <p className="text-white text-sm font-medium leading-tight">{app.candidates?.full_name}</p>
+        <WhatsAppButton
+          candidate={app.candidates}
+          role={app.roles}
+          stage={app.stage}
+        />
       </div>
-      <p className="text-gray-500 text-xs mt-2">
-        {formatDistanceToNow(new Date(last_stage_change_at), { addSuffix: true })}
-      </p>
+
+      <p className="text-gray-400 text-xs mb-2">{app.roles?.title}</p>
+
+      <div className="flex items-center justify-between">
+        <span className={`text-xs px-2 py-0.5 rounded-full ${
+          app.candidates?.origin === 'Lombok Local'
+            ? 'bg-emerald-900/50 text-emerald-400'
+            : 'bg-gray-600 text-gray-400'
+        }`}>
+          {app.candidates?.origin === 'Lombok Local' ? '🏝️ Local' : '📍 Outside'}
+        </span>
+
+        {isStagnant() && (
+          <span className="flex items-center gap-1 text-orange-400 text-xs">
+            <Clock size={10} />
+            {formatDistanceToNow(new Date(app.updated_at), { addSuffix: true })}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

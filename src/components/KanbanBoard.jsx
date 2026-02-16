@@ -104,13 +104,11 @@ export default function KanbanBoard() {
               </div>
               <div className="p-3 space-y-2 flex-1 overflow-y-auto">
                 {cards.map(app => (
-                  <div
+                  <CandidateCard
                     key={app.id}
-                    draggable
-                    onDragStart={() => handleDragStart(app)}
-                  >
-                    <CandidateCard application={app} />
-                  </div>
+                    app={app}
+                    onDragStart={handleDragStart}
+                  />
                 ))}
                 {cards.length === 0 && (
                   <p className="text-gray-600 text-xs text-center py-4">Drop here</p>
