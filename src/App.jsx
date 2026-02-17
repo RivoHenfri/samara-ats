@@ -8,7 +8,7 @@ import CandidatesList from './components/CandidatesList'
 import TCOWCalculator from './components/TCOWCalculator'
 import RolesManager from './components/RolesManager'
 import Analytics from './components/Analytics'
-
+import Import from './components/Import'
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -40,6 +40,7 @@ export default function App() {
     roles: <RolesManager />,
     tcow: <TCOWCalculator />,
     analytics: <Analytics />,
+import: <Import />,
   }
 
   return (
