@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { LayoutDashboard, Users, Briefcase, Calculator, LogOut, Menu, X, ClipboardList, BarChart2, Upload } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { LayoutDashboard, Users, Briefcase, Calculator, LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog } from 'lucide-react'
 
 export default function Layout({ children, currentPage, setCurrentPage }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { isAdmin, signOut } = useAuth()
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,6 +14,7 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
     { id: 'tcow', label: 'TCOW Calculator', icon: Calculator },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'import', label: 'Import', icon: Upload },
+    ...(isAdmin ? [{ id: 'users', label: 'User Management', icon: UserCog }] : []),
   ]
 
   return (
@@ -39,7 +41,7 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
           ))}
         </nav>
         <button
-          onClick={() => supabase.auth.signOut()}
+          onClick={signOut}
           className="flex items-center gap-3 px-5 py-4 text-gray-400 hover:text-white border-t border-gray-700"
         >
           <LogOut size={20} />
