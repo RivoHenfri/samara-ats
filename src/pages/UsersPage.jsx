@@ -28,7 +28,7 @@ export default function UsersPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: inviteEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: window.location.origin,
         data: { full_name: inviteName, role: inviteRole }
       }
     })
