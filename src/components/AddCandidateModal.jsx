@@ -98,10 +98,8 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
       setError('VITE_ANTHROPIC_KEY is not set in your .env file.')
       return
     }
-
     setScanning(true)
     setError(null)
-
     const reader = new FileReader()
     reader.onload = async (ev) => {
       const base64 = ev.target.result.split(',')[1]
