@@ -7,11 +7,12 @@ const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY
 async function extractCVWithClaude(base64PDF) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-    },
+    hheaders: {
+  'Content-Type': 'application/json',
+  'x-api-key': ANTHROPIC_KEY,
+  'anthropic-version': '2023-06-01',
+  'anthropic-dangerous-direct-browser-access': 'true',
+},
     body: JSON.stringify({
       model: 'claude-opus-4-6',
       max_tokens: 512,
