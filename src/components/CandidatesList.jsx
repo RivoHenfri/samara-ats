@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Search, MessageCircle } from 'lucide-react'
+import CandidateDetail from './CandidateDetail'
 
 const stageColors = {
   New: 'bg-gray-600',
@@ -26,11 +27,9 @@ function WhatsAppButton({ candidate, role }) {
 
   const handleClick = () => {
     const raw = candidate?.whatsapp || ''
-    // Normalize: strip spaces/dashes, ensure starts with 62
     let number = raw.replace(/[\s\-\(\)]/g, '')
     if (number.startsWith('0')) number = '62' + number.slice(1)
     if (number.startsWith('+')) number = number.slice(1)
-
     const message = getWhatsAppMessage(candidate, role, lang)
     const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
@@ -38,7 +37,6 @@ function WhatsAppButton({ candidate, role }) {
 
   return (
     <div className="flex items-center gap-1">
-      {/* Language toggle */}
       <button
         onClick={() => setLang(lang === 'id' ? 'en' : 'id')}
         className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors font-mono"
@@ -46,7 +44,6 @@ function WhatsAppButton({ candidate, role }) {
       >
         {lang === 'id' ? 'ID' : 'EN'}
       </button>
-      {/* WhatsApp button */}
       <button
         onClick={handleClick}
         className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors font-medium"
@@ -64,6 +61,7 @@ export default function CandidatesList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [lombokOnly, setLombokOnly] = useState(false)
+  const [selectedApp, setSelectedApp] = useState(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -74,6 +72,11 @@ export default function CandidatesList() {
       .order('created_at', { ascending: false })
     setApplications(data || [])
     setLoading(false)
+  }
+
+  const handleUpdated = () => {
+    fetchData()
+    setSelectedApp(null)
   }
 
   const filtered = applications.filter(app => {
@@ -135,7 +138,14 @@ export default function CandidatesList() {
           <tbody>
             {filtered.map(app => (
               <tr key={app.id} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
-                <td className="px-4 py-3 text-white font-medium">{app.candidates?.full_name}</td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => setSelectedApp(app)}
+                    className="text-white font-medium hover:text-emerald-400 transition-colors text-left"
+                  >
+                    {app.candidates?.full_name}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-gray-300">{app.roles?.title}</td>
                 <td className="px-4 py-3 text-gray-400 text-sm">{app.roles?.department}</td>
                 <td className="px-4 py-3">
@@ -160,6 +170,15 @@ export default function CandidatesList() {
           <div className="text-center text-gray-500 py-12">No candidates found</div>
         )}
       </div>
+
+      {/* Edit / Detail Modal */}
+      {selectedApp && (
+        <CandidateDetail
+          app={selectedApp}
+          onClose={() => setSelectedApp(null)}
+          onUpdated={handleUpdated}
+        />
+      )}
     </div>
   )
 }
