@@ -6,12 +6,12 @@ const ROLES = ['Admin', 'Manager', 'Viewer']
 
 export default function UsersPage() {
   const { isAdmin, profile: myProfile } = useAuth()
-  const [users, setUsers] = useState([])
+  const [users,       setUsers]       = useState([])
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState('Viewer')
-  const [inviteName, setInviteName] = useState('')
-  const [sending, setSending] = useState(false)
-  const [message, setMessage] = useState('')
+  const [inviteRole,  setInviteRole]  = useState('Viewer')
+  const [inviteName,  setInviteName]  = useState('')
+  const [sending,     setSending]     = useState(false)
+  const [message,     setMessage]     = useState('')
 
   const fetchUsers = async () => {
     const { data } = await supabase.from('profiles').select('*').order('created_at')
@@ -24,7 +24,6 @@ export default function UsersPage() {
     e.preventDefault()
     setSending(true)
     setMessage('')
-
     const { error } = await supabase.auth.signInWithOtp({
       email: inviteEmail,
       options: {
@@ -32,10 +31,8 @@ export default function UsersPage() {
         data: { full_name: inviteName, role: inviteRole }
       }
     })
-
-    if (error) setMessage('❌ ' + error.message)
-    else setMessage(`✅ Invite sent to ${inviteEmail} as ${inviteRole}`)
-
+    if (error) setMessage('Error: ' + error.message)
+    else setMessage(`Invite sent to ${inviteEmail} as ${inviteRole}`)
     setInviteEmail('')
     setInviteName('')
     setSending(false)
@@ -49,88 +46,133 @@ export default function UsersPage() {
 
   if (!isAdmin) {
     return (
-      <div className="p-8 text-slate-500 text-sm">
-        Only Admins can manage users.
+      <div>
+        <div className="topbar">
+          <h1 className="page-title">User Management</h1>
+        </div>
+        <div className="page-body">
+          <div className="empty-state">
+            Only Admins can manage users.
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h2 className="text-xl font-bold text-emerald-900 mb-6">User Management</h2>
-
-      <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
-        <h3 className="font-semibold text-emerald-800 mb-4">Invite Team Member</h3>
-        <form onSubmit={handleInvite} className="space-y-3">
-          <input
-            type="text"
-            placeholder="Full name"
-            value={inviteName}
-            onChange={e => setInviteName(e.target.value)}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white placeholder:text-slate-400"
-          />
-          <input
-            type="email"
-            required
-            placeholder="Email address"
-            value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white placeholder:text-slate-400"
-          />
-          <select
-            value={inviteRole}
-            onChange={e => setInviteRole(e.target.value)}
-            className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white"
-          >
-            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <button
-            type="submit"
-            disabled={sending}
-            className="w-full bg-orange-700 text-white rounded-lg py-2 text-sm font-medium hover:bg-orange-800 disabled:opacity-50"
-          >
-            {sending ? 'Sending...' : 'Send Magic Link Invite'}
-          </button>
-          {message && <p className="text-sm mt-1 text-slate-700">{message}</p>}
-        </form>
+    <div>
+      {/* ── Topbar ── */}
+      <div className="topbar">
+        <h1 className="page-title">User Management</h1>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-stone-50 text-slate-500 text-xs uppercase">
-            <tr>
-              <th className="text-left px-4 py-3">Name / Email</th>
-              <th className="text-left px-4 py-3">Role</th>
-              <th className="text-left px-4 py-3">Joined</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {users.map(u => (
-              <tr key={u.id} className="hover:bg-stone-50">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-emerald-900">{u.full_name || '—'}</p>
-                  <p className="text-slate-400 text-xs">{u.email}</p>
-                </td>
-                <td className="px-4 py-3">
-                  {u.id === myProfile?.id ? (
-                    <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">{u.role} (you)</span>
-                  ) : (
-                    <select
-                      value={u.role}
-                      onChange={e => updateRole(u.id, e.target.value)}
-                      className="text-xs border border-stone-200 rounded px-2 py-1 bg-white text-slate-800"
-                    >
-                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-slate-400 text-xs">
-                  {new Date(u.created_at).toLocaleDateString('id-ID')}
-                </td>
+      <div className="page-body" style={{ maxWidth: 680 }}>
+
+        {/* Invite form */}
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <span className="card-title">Invite Team Member</span>
+          </div>
+          <div style={{ padding: '20px' }}>
+            <form onSubmit={handleInvite}>
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rina Dewi"
+                  value={inviteName}
+                  onChange={e => setInviteName(e.target.value)}
+                  className="form-control"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="rina@samaralombok.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  className="form-control"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={e => setInviteRole(e.target.value)}
+                  className="form-control"
+                >
+                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={sending}
+                className="btn btn-primary btn-block"
+              >
+                {sending ? (
+                  <><span className="spinner" style={{ width: 13, height: 13 }} /> Sending…</>
+                ) : (
+                  'Send Magic Link Invite'
+                )}
+              </button>
+              {message && (
+                <p style={{
+                  marginTop: 10, fontSize: 12,
+                  color: message.startsWith('Error') ? 'var(--alert)' : 'var(--teal)',
+                }}>
+                  {message.startsWith('Error') ? '⚠ ' : '✓ '}{message}
+                </p>
+              )}
+            </form>
+          </div>
+        </div>
+
+        {/* Users table */}
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name / Email</th>
+                <th>Role</th>
+                <th>Joined</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id}>
+                  <td>
+                    <p style={{ fontWeight: 600, color: 'var(--charcoal)' }}>
+                      {u.full_name || '—'}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--stone)' }}>{u.email}</p>
+                  </td>
+                  <td>
+                    {u.id === myProfile?.id ? (
+                      <span className="stage-badge stage-hired">
+                        {u.role} (you)
+                      </span>
+                    ) : (
+                      <select
+                        value={u.role}
+                        onChange={e => updateRole(u.id, e.target.value)}
+                        className="form-control"
+                        style={{ width: 'auto', padding: '3px 26px 3px 8px', fontSize: 11 }}
+                      >
+                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    )}
+                  </td>
+                  <td style={{ fontSize: 11, color: 'var(--stone)' }}>
+                    {new Date(u.created_at).toLocaleDateString('id-ID')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
       </div>
     </div>
   )

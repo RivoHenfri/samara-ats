@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import CandidateDetail from './CandidateDetail'
 
+// ── WhatsApp message templates (unchanged) ────────────────────
 function getWhatsAppMessage(candidate, role, stage, lang) {
   const name = candidate?.full_name?.split(' ')[0] || 'there'
   const roleTitle = role?.title || 'the position'
@@ -39,6 +40,7 @@ function getWhatsAppMessage(candidate, role, stage, lang) {
   return lang === 'id' ? template.id : template.en
 }
 
+// ── WhatsApp button ───────────────────────────────────────────
 function WhatsAppButton({ candidate, role, stage }) {
   const [lang, setLang] = useState('id')
 
@@ -49,8 +51,7 @@ function WhatsAppButton({ candidate, role, stage }) {
     if (number.startsWith('0')) number = '62' + number.slice(1)
     if (number.startsWith('+')) number = number.slice(1)
     const message = getWhatsAppMessage(candidate, role, stage, lang)
-    const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank')
   }
 
   const handleToggle = (e) => {
@@ -61,33 +62,48 @@ function WhatsAppButton({ candidate, role, stage }) {
   if (!candidate?.whatsapp) return null
 
   return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={handleToggle}
-        className="text-xs px-1.5 py-0.5 rounded bg-gray-600 text-gray-300 hover:bg-gray-500 transition-colors font-mono leading-none"
-      >
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <button onClick={handleToggle} className="lang-toggle">
         {lang === 'id' ? 'ID' : 'EN'}
       </button>
       <button
         onClick={handleClick}
-        className="p-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors"
+        className="wa-btn"
         title={`WhatsApp (${lang === 'id' ? 'Bahasa' : 'English'}) — ${stage}`}
       >
-        <MessageCircle size={13} />
+        <MessageCircle size={12} />
       </button>
     </div>
   )
 }
 
+// ── Stale check ───────────────────────────────────────────────
+function isStagnant(app) {
+  if (!app?.updated_at) return false
+  const hrs = (Date.now() - new Date(app.updated_at)) / (1000 * 60 * 60)
+  return hrs > 48
+}
+
+// ── Division tag class ────────────────────────────────────────
+function deptTag(dept) {
+  if (!dept) return 'tag-src'
+  const d = dept.toLowerCase()
+  if (d === 'hospitality') return 'tag-hosp'
+  if (d === 'operations')  return 'tag-ops'
+  if (d === 'construction') return 'tag-const'
+  return 'tag-src'
+}
+
+// ── CANDIDATE CARD ────────────────────────────────────────────
 export default function CandidateCard({ app, onDragStart }) {
   if (!app) return null
 
   const [showDetail, setShowDetail] = useState(false)
-  const [noteCount, setNoteCount] = useState(0)
+  const [noteCount,  setNoteCount]  = useState(0)
+  const stale = isStagnant(app)
+  const isLombok = app.candidates?.origin === 'Lombok Local'
 
-  useEffect(() => {
-    fetchNoteCount()
-  }, [app.id])
+  useEffect(() => { fetchNoteCount() }, [app.id])
 
   const fetchNoteCount = async () => {
     const { count } = await supabase
@@ -97,73 +113,78 @@ export default function CandidateCard({ app, onDragStart }) {
     setNoteCount(count || 0)
   }
 
-  const isStagnant = () => {
-    if (!app?.updated_at) return false
-    const updated = new Date(app.updated_at)
-    const hours = (Date.now() - updated) / (1000 * 60 * 60)
-    return hours > 48
-  }
-
   return (
     <>
       <div
         draggable
         onDragStart={() => onDragStart(app)}
-        className={`bg-gray-700 rounded-lg p-3 cursor-grab active:cursor-grabbing border ${
-          isStagnant() ? 'border-orange-500/60' : 'border-transparent'
-        } hover:border-gray-500 transition-colors`}
+        className={`k-card${stale ? ' stale' : ''}`}
       >
-        {/* Name + WA button row */}
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <p
-            className="text-white text-sm font-medium leading-tight hover:text-emerald-400 cursor-pointer transition-colors"
-            onClick={(e) => { e.stopPropagation(); setShowDetail(true) }}
-          >
-            {app.candidates?.full_name}
-          </p>
-          <WhatsAppButton
-            candidate={app.candidates}
-            role={app.roles}
-            stage={app.stage}
-          />
-        </div>
+        {/* Stale / Lombok badge */}
+        {stale
+          ? <span className="k-stale-badge">48h</span>
+          : isLombok
+            ? <span className="k-lombok-badge">🌴</span>
+            : null
+        }
+
+        {/* Name */}
+        <p
+          className="k-card-name"
+          onClick={(e) => { e.stopPropagation(); setShowDetail(true) }}
+        >
+          {app.candidates?.full_name}
+        </p>
 
         {/* Role */}
-        <p className="text-gray-400 text-xs mb-2">{app.roles?.title}</p>
+        <p className="k-card-role">{app.roles?.title}</p>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between">
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            app.candidates?.origin === 'Lombok Local'
-              ? 'bg-emerald-900/50 text-emerald-400'
-              : 'bg-gray-600 text-gray-400'
-          }`}>
-            {app.candidates?.origin === 'Lombok Local' ? '🏝️ Local' : '📍 Outside'}
+        {/* Footer row */}
+        <div className="k-card-foot">
+          {/* Origin tag */}
+          <span className={`tag ${isLombok ? 'tag-lombok' : 'tag-src'}`}>
+            {isLombok ? '🌴 Local' : '📍 Outside'}
           </span>
 
-          <div className="flex items-center gap-2">
-            {/* Note count badge */}
+          {/* Department */}
+          {app.roles?.department && (
+            <span className={`tag ${deptTag(app.roles.department)}`}>
+              {app.roles.department}
+            </span>
+          )}
+
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Note count */}
             {noteCount > 0 && (
               <button
                 onClick={(e) => { e.stopPropagation(); setShowDetail(true) }}
-                className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 3,
+                  color: 'var(--stone)', background: 'none', border: 'none',
+                  cursor: 'pointer', fontSize: 10,
+                  transition: 'color 0.15s',
+                }}
+                onMouseOver={e => e.currentTarget.style.color = 'var(--charcoal)'}
+                onMouseOut={e => e.currentTarget.style.color = 'var(--stone)'}
               >
-                <FileText size={11} />
-                <span className="text-xs">{noteCount}</span>
+                <FileText size={10} />
+                {noteCount}
               </button>
             )}
 
-            {isStagnant() && (
-              <span className="flex items-center gap-1 text-orange-400 text-xs">
+            {/* Time indicator */}
+            {stale ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--alert)', fontSize: 10, fontWeight: 600 }}>
                 <Clock size={10} />
                 {formatDistanceToNow(new Date(app.updated_at), { addSuffix: true })}
               </span>
+            ) : (
+              <WhatsAppButton candidate={app.candidates} role={app.roles} stage={app.stage} />
             )}
           </div>
         </div>
       </div>
 
-      {/* Detail Panel */}
       {showDetail && (
         <CandidateDetail
           app={app}

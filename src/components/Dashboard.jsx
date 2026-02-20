@@ -4,18 +4,31 @@ import { Users, Briefcase, AlertTriangle, TrendingUp } from 'lucide-react'
 
 const DEPTS = ['All', 'Hospitality', 'Operations', 'Construction']
 
+// Stage → CSS class
+const stageClass = {
+  New:       'stage-new',
+  Screening: 'stage-screening',
+  Interview: 'stage-interview',
+  Offer:     'stage-offer',
+  Hired:     'stage-hired',
+  Rejected:  'stage-rejected',
+}
+
 export default function Dashboard() {
   const [allApplications, setAllApplications] = useState([])
-  const [allCandidates, setAllCandidates] = useState([])
-  const [allRoles, setAllRoles] = useState([])
-  const [dept, setDept] = useState('All')
+  const [allCandidates,   setAllCandidates]   = useState([])
+  const [allRoles,        setAllRoles]        = useState([])
+  const [dept,    setDept]    = useState('All')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
     const [appsRes, candidatesRes, rolesRes] = await Promise.all([
-      supabase.from('applications').select('*, candidates(full_name, id), roles(title, department, status)').order('created_at', { ascending: false }),
+      supabase
+        .from('applications')
+        .select('*, candidates(full_name, id), roles(title, department, status)')
+        .order('created_at', { ascending: false }),
       supabase.from('candidates').select('id'),
       supabase.from('roles').select('id, status, department'),
     ])
@@ -25,17 +38,14 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  // Filter applications by department
+  // ── Filtered data ───────────────────────────────────────────
   const filteredApps = allApplications.filter(app =>
     dept === 'All' || app.roles?.department === dept
   )
-
-  // Filter roles by department
   const filteredRoles = allRoles.filter(r =>
     dept === 'All' || r.department === dept
   )
 
-  // Compute stats from filtered data
   const totalCandidates = dept === 'All'
     ? allCandidates.length
     : [...new Set(filteredApps.map(a => a.candidates?.id).filter(Boolean))].length
@@ -50,41 +60,34 @@ export default function Dashboard() {
 
   const hired = filteredApps.filter(a => a.stage === 'Hired').length
 
-  const recentApps = filteredApps.slice(0, 5)
+  const recentApps = filteredApps.slice(0, 8)
 
-  const statCards = [
-    { label: 'Total Candidates', value: totalCandidates, icon: Users, color: 'text-blue-400' },
-    { label: 'Open Roles', value: openRoles, icon: Briefcase, color: 'text-emerald-400' },
-    { label: 'Stagnant (48h+)', value: stagnant, icon: AlertTriangle, color: 'text-red-400' },
-    { label: 'Hired', value: hired, icon: TrendingUp, color: 'text-purple-400' },
+  // ── Stat cards config ──────────────────────────────────────
+  const stats = [
+    { label: 'Total Candidates', value: totalCandidates, accent: 'stat-gold',  icon: <Users size={40} /> },
+    { label: 'Open Roles',       value: openRoles,       accent: 'stat-teal',  icon: <Briefcase size={40} /> },
+    { label: '48h+ Stagnant',   value: stagnant,        accent: 'stat-alert', icon: <AlertTriangle size={40} />, alert: stagnant > 0 },
+    { label: 'Hired',            value: hired,           accent: 'stat-stone', icon: <TrendingUp size={40} /> },
   ]
 
-  const stageColors = {
-    New: 'bg-gray-600',
-    Screening: 'bg-blue-600',
-    Interview: 'bg-yellow-600',
-    Offer: 'bg-purple-600',
-    Hired: 'bg-emerald-600',
-    Rejected: 'bg-red-600',
-  }
-
-  if (loading) return <div className="p-8 text-gray-400">Loading...</div>
+  if (loading) return (
+    <div className="loading-state">
+      <span className="spinner" />
+      Loading dashboard…
+    </div>
+  )
 
   return (
-    <div className="p-8">
-      {/* Header + Department Filter */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <div className="flex items-center gap-2">
+    <div>
+      {/* ── Topbar ── */}
+      <div className="topbar">
+        <h1 className="page-title">Dashboard</h1>
+        <div style={{ display: 'flex', gap: 6 }}>
           {DEPTS.map(d => (
             <button
               key={d}
               onClick={() => setDept(d)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                dept === d
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
-              }`}
+              className={`btn btn-sm ${dept === d ? 'btn-primary' : 'btn-ghost'}`}
             >
               {d}
             </button>
@@ -92,46 +95,88 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map(card => (
-          <div key={card.label} className="bg-gray-800 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-gray-400 text-sm">{card.label}</span>
-              <card.icon size={20} className={card.color} />
-            </div>
-            <div className="text-3xl font-bold text-white">{card.value}</div>
-          </div>
-        ))}
-      </div>
+      <div className="page-body">
 
-      {/* Recent Applications */}
-      <div className="bg-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Recent Applications</h2>
-          {dept !== 'All' && (
-            <span className="text-xs px-2 py-1 bg-emerald-900/50 text-emerald-400 rounded-full">
-              {dept} only
+        {/* 48h stale alert */}
+        {stagnant > 0 && (
+          <div className="alert-banner">
+            <AlertTriangle size={15} color="var(--alert)" />
+            <span>
+              <strong style={{ color: 'var(--alert)' }}>{stagnant} candidate{stagnant > 1 ? 's' : ''}</strong>
+              {' '}have not moved in 48+ hours and need action.
             </span>
-          )}
-        </div>
-        {recentApps.length === 0 ? (
-          <p className="text-gray-400">No applications found{dept !== 'All' ? ` in ${dept}` : ''}.</p>
-        ) : (
-          <div className="space-y-3">
-            {recentApps.map(app => (
-              <div key={app.id} className="flex items-center justify-between bg-gray-700/50 rounded-lg px-4 py-3">
-                <div>
-                  <p className="text-white font-medium">{app.candidates?.full_name}</p>
-                  <p className="text-gray-400 text-sm">{app.roles?.title} · {app.roles?.department}</p>
-                </div>
-                <span className={`text-xs text-white px-3 py-1 rounded-full ${stageColors[app.stage]}`}>
-                  {app.stage}
-                </span>
-              </div>
-            ))}
           </div>
         )}
+
+        {/* Stat cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 22 }}>
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className={`stat-card ${s.accent} animate-fade-up`}
+              style={{ animationDelay: `${i * 0.06}s` }}
+            >
+              <div className="stat-label">{s.label}</div>
+              <div className={`stat-num${s.alert ? ' alert-val' : ''}`}>{s.value}</div>
+              <div style={{
+                position: 'absolute', bottom: 12, right: 14,
+                opacity: 0.07, color: 'var(--charcoal)',
+                width: 40, height: 40,
+              }}>
+                {s.icon}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent Applications */}
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Recent Applications</span>
+            {dept !== 'All' && (
+              <span className="tag tag-ops">{dept}</span>
+            )}
+          </div>
+
+          {recentApps.length === 0 ? (
+            <div className="empty-state">
+              No applications found{dept !== 'All' ? ` in ${dept}` : ''}.
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Role</th>
+                  <th>Department</th>
+                  <th>Stage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentApps.map(app => (
+                  <tr key={app.id}>
+                    <td style={{ fontWeight: 600 }}>{app.candidates?.full_name}</td>
+                    <td>{app.roles?.title}</td>
+                    <td>
+                      <span className={`tag ${
+                        app.roles?.department === 'Hospitality' ? 'tag-hosp' :
+                        app.roles?.department === 'Operations'  ? 'tag-ops'  : 'tag-const'
+                      }`}>
+                        {app.roles?.department}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`stage-badge ${stageClass[app.stage] ?? 'stage-new'}`}>
+                        {app.stage}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
       </div>
     </div>
   )

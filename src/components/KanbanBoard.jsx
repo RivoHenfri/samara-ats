@@ -2,26 +2,27 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import CandidateCard from './CandidateCard'
 import AddCandidateModal from './AddCandidateModal'
-import { Plus, Filter } from 'lucide-react'
+import { Plus } from 'lucide-react'
 
 const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
 
-const stageColors = {
-  New: 'border-gray-500',
-  Screening: 'border-blue-500',
-  Interview: 'border-yellow-500',
-  Offer: 'border-purple-500',
-  Hired: 'border-emerald-500',
-  Rejected: 'border-red-500',
+// CSS class for each column
+const colClass = {
+  New:       'k-col-new',
+  Screening: 'k-col-screening',
+  Interview: 'k-col-interview',
+  Offer:     'k-col-offer',
+  Hired:     'k-col-hired',
+  Rejected:  'k-col-rejected',
 }
 
 export default function KanbanBoard() {
   const [applications, setApplications] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [lombokOnly, setLombokOnly] = useState(false)
-  const [filterDept, setFilterDept] = useState('All')
-  const [dragging, setDragging] = useState(null)
+  const [loading,      setLoading]      = useState(true)
+  const [showModal,    setShowModal]    = useState(false)
+  const [lombokOnly,   setLombokOnly]   = useState(false)
+  const [filterDept,   setFilterDept]   = useState('All')
+  const [dragging,     setDragging]     = useState(null)
 
   useEffect(() => { fetchApplications() }, [])
 
@@ -49,74 +50,129 @@ export default function KanbanBoard() {
     return true
   })
 
-  if (loading) return <div className="p-8 text-gray-400">Loading pipeline...</div>
+  // Count stale across all active stages
+  const staleCount = applications.filter(app => {
+    if (['Offer', 'Hired', 'Rejected'].includes(app.stage)) return false
+    const hrs = (Date.now() - new Date(app.updated_at)) / 36e5
+    return hrs > 48
+  }).length
+
+  if (loading) return (
+    <div className="loading-state">
+      <span className="spinner" />
+      Loading pipeline…
+    </div>
+  )
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-white">Pipeline</h1>
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Lombok First Toggle */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+
+      {/* ── Topbar ── */}
+      <div className="topbar">
+        <h1 className="page-title">Pipeline</h1>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+
+          {/* Lombok First toggle */}
           <button
             onClick={() => setLombokOnly(!lombokOnly)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              lombokOnly ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-400'
-            }`}
+            className={`btn btn-sm ${lombokOnly ? 'btn-teal' : 'btn-ghost'}`}
           >
-            🏝️ Lombok First
+            🌴 Lombok First
           </button>
-          {/* Department Filter */}
+
+          {/* Department filter */}
           <select
             value={filterDept}
             onChange={e => setFilterDept(e.target.value)}
-            className="bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm outline-none"
+            className="form-control"
+            style={{ width: 'auto', padding: '5px 28px 5px 10px', fontSize: 11 }}
           >
             <option>All</option>
             <option>Hospitality</option>
             <option>Operations</option>
             <option>Construction</option>
           </select>
+
           {/* Add Candidate */}
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            className="btn btn-primary btn-sm"
           >
-            <Plus size={16} /> Add Candidate
+            <Plus size={14} />
+            Add Candidate
           </button>
         </div>
       </div>
 
-      {/* Kanban Columns */}
-      <div className="flex gap-4 overflow-x-auto flex-1 pb-4">
-        {STAGES.map(stage => {
-          const cards = filtered.filter(a => a.stage === stage)
-          return (
-            <div
-              key={stage}
-              onDragOver={e => e.preventDefault()}
-              onDrop={() => handleDrop(stage)}
-              className={`flex-shrink-0 w-64 bg-gray-800 rounded-xl border-t-4 ${stageColors[stage]} flex flex-col`}
-            >
-              <div className="p-3 border-b border-gray-700 flex items-center justify-between">
-                <span className="text-white font-medium text-sm">{stage}</span>
-                <span className="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full">{cards.length}</span>
+      <div className="page-body" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+
+        {/* 48h stale alert */}
+        {staleCount > 0 && (
+          <div className="alert-banner">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>
+              <strong style={{ color: 'var(--alert)' }}>{staleCount} candidate{staleCount > 1 ? 's' : ''}</strong>
+              {' '}not moved in 48+ hours — action required
+            </span>
+          </div>
+        )}
+
+        {/* Kanban board */}
+        <div className="kanban-wrap" style={{ flex: 1 }}>
+          {STAGES.map(stage => {
+            const cards = filtered.filter(a => a.stage === stage)
+            return (
+              <div
+                key={stage}
+                className={`k-col ${colClass[stage]}`}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => handleDrop(stage)}
+              >
+                {/* Column header */}
+                <div className="k-col-head">
+                  <span className="k-col-title">{stage}</span>
+                  <span className="k-col-count"
+                    style={{
+                      background: stage === 'Hired' ? 'rgba(74,124,116,0.18)' :
+                                  stage === 'Rejected' ? 'rgba(192,97,74,0.12)' :
+                                  'rgba(0,0,0,0.06)',
+                      color: stage === 'Hired' ? 'var(--teal)' :
+                             stage === 'Rejected' ? 'var(--alert)' :
+                             'var(--charcoal)',
+                    }}
+                  >
+                    {cards.length}
+                  </span>
+                </div>
+
+                {/* Cards */}
+                <div className="k-col-body">
+                  {cards.map(app => (
+                    <CandidateCard
+                      key={app.id}
+                      app={app}
+                      onDragStart={handleDragStart}
+                    />
+                  ))}
+                  {cards.length === 0 && (
+                    <div style={{
+                      textAlign: 'center', padding: '16px 8px',
+                      fontSize: 11, color: 'var(--stone-light)',
+                      border: '1.5px dashed var(--sand-dark)',
+                      borderRadius: 6,
+                    }}>
+                      Drop here
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="p-3 space-y-2 flex-1 overflow-y-auto">
-                {cards.map(app => (
-                  <CandidateCard
-                    key={app.id}
-                    app={app}
-                    onDragStart={handleDragStart}
-                  />
-                ))}
-                {cards.length === 0 && (
-                  <p className="text-gray-600 text-xs text-center py-4">Drop here</p>
-                )}
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {showModal && (
