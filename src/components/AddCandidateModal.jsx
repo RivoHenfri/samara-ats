@@ -39,11 +39,13 @@ async function extractCVWithClaude(base64PDF) {
     }),
   })
   const data = await response.json()
-  const text = data.content?.[0]?.text || '{}'
+  if (data.error) throw new Error(data.error.message || 'API error')
+  if (!data.content?.[0]?.text) throw new Error('No response from Claude')
+  const text = data.content[0].text
   try {
     return JSON.parse(text.replace(/```json|```/g, '').trim())
   } catch {
-    return {}
+    throw new Error('Could not parse CV data')
   }
 }
 
@@ -116,8 +118,8 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
             : f.current_salary,
         }))
         setScanned(true)
-      } catch {
-        setError('CV scan failed — fill in the form manually.')
+      } catch (err) {
+        setError('CV scan failed: ' + (err.message || 'fill in the form manually.'))
       }
       setScanning(false)
     }
