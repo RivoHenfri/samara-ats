@@ -607,12 +607,14 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   background: white;
   border: 1px solid var(--sand-dark);
   border-radius: 10px;
-  overflow: hidden;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .data-table { width: 100%; border-collapse: collapse; }
 
-.data-table thead { background: var(--sand); }
+.data-table thead { background: var(--sand); position: sticky; top: 0; z-index: 1; }
 
 .data-table th {
   padding: 10px 14px;
