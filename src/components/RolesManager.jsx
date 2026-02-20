@@ -5,16 +5,16 @@ import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 const DEPARTMENTS = ['Hospitality', 'Operations', 'Construction']
 const PRIORITIES = ['Critical', 'Core', 'Support']
 
-const priorityColors = {
-  Critical: 'bg-red-500/20 text-red-400',
-  Core: 'bg-blue-500/20 text-blue-400',
-  Support: 'bg-gray-500/20 text-gray-400',
+const priorityStyle = {
+  Critical: { background: 'rgba(192,97,74,0.12)', color: '#C0614A' },
+  Core:     { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  Support:  { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' },
 }
 
-const deptColors = {
-  Hospitality: 'bg-emerald-500/20 text-emerald-400',
-  Operations: 'bg-purple-500/20 text-purple-400',
-  Construction: 'bg-yellow-500/20 text-yellow-400',
+const deptStyle = {
+  Hospitality:  { background: 'rgba(184,150,90,0.12)', color: '#8A6010' },
+  Operations:   { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  Construction: { background: 'rgba(44,42,39,0.08)',   color: '#2C2A27' },
 }
 
 const emptyForm = { title: '', department: 'Hospitality', priority: 'Core', status: 'Open' }
@@ -93,30 +93,33 @@ export default function RolesManager() {
   const openCount = roles.filter(r => r.status === 'Open').length
   const totalCandidates = Object.values(candidateCounts).reduce((a, b) => a + b, 0)
 
-  if (loading) return <div className="p-8 text-gray-400">Loading roles...</div>
+  if (loading) return <div className="loading-state"><div className="spinner" />Loading roles...</div>
 
   return (
-    <div className="p-8">
+    <div style={{ padding: '24px' }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="text-2xl font-bold text-white">Roles</h1>
-          <p className="text-gray-400 text-sm mt-1">{openCount} open · {roles.length} total · {totalCandidates} candidates</p>
+          <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 26, fontWeight: 400, color: '#2C2A27', letterSpacing: '0.02em' }}>
+            Roles
+          </div>
+          <div style={{ fontSize: 12, color: '#9A8F80', marginTop: 3 }}>
+            {openCount} open · {roles.length} total · {totalCandidates} candidates
+          </div>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} /> Add Role
+        <button onClick={openAdd} className="btn btn-primary" style={{ gap: 6 }}>
+          <Plus size={14} /> Add Role
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
+      <div className="filter-bar">
         <select
           value={filterDept}
           onChange={e => setFilterDept(e.target.value)}
-          className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm outline-none"
+          className="form-control"
+          style={{ width: 'auto', minWidth: 160 }}
         >
           <option value="All">All Departments</option>
           {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
@@ -124,7 +127,8 @@ export default function RolesManager() {
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm outline-none"
+          className="form-control"
+          style={{ width: 'auto', minWidth: 130 }}
         >
           <option value="All">All Status</option>
           <option>Open</option>
@@ -133,68 +137,85 @@ export default function RolesManager() {
       </div>
 
       {/* Table */}
-      <div className="bg-gray-800 rounded-xl overflow-hidden">
-        <table className="w-full">
+      <div className="table-wrap">
+        <table className="data-table">
           <thead>
-            <tr className="border-b border-gray-700">
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Role</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Department</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Priority</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Candidates</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Status</th>
-              <th className="text-left text-gray-400 text-sm px-4 py-3">Actions</th>
+            <tr>
+              <th>Role</th>
+              <th>Department</th>
+              <th>Priority</th>
+              <th>Candidates</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(role => (
-              <tr key={role.id} className={`border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors ${role.status === 'Closed' ? 'opacity-50' : ''}`}>
-                <td className="px-4 py-3 text-white font-medium">{role.title}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-1 rounded-full ${deptColors[role.department]}`}>
+              <tr
+                key={role.id}
+                style={{ opacity: role.status === 'Closed' ? 0.5 : 1 }}
+              >
+                <td style={{ fontWeight: 600, color: '#2C2A27' }}>{role.title}</td>
+                <td>
+                  <span className="tag" style={deptStyle[role.department]}>
                     {role.department}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[role.priority]}`}>
+                <td>
+                  <span className="tag" style={priorityStyle[role.priority]}>
                     {role.priority}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-300 text-sm">
+                <td style={{ color: '#9A8F80' }}>
                   {candidateCounts[role.id] || 0}
                 </td>
-                <td className="px-4 py-3">
+                <td>
                   <button
                     onClick={() => toggleStatus(role)}
-                    className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
-                      role.status === 'Open'
-                        ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/40'
-                        : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/40'
-                    }`}
+                    className="tag"
+                    style={{
+                      cursor: 'pointer',
+                      border: 'none',
+                      ...(role.status === 'Open'
+                        ? { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' }
+                        : { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' }
+                      )
+                    }}
                   >
                     {role.status}
                   </button>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
+                <td>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button
                       onClick={() => openEdit(role)}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9A8F80', padding: 2, display: 'flex' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#2C2A27'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#9A8F80'}
                     >
                       <Pencil size={14} />
                     </button>
                     {deleteConfirm === role.id ? (
-                      <div className="flex gap-1">
-                        <button onClick={() => handleDelete(role.id)} className="text-red-400 hover:text-red-300">
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          onClick={() => handleDelete(role.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0614A', padding: 2, display: 'flex' }}
+                        >
                           <Check size={14} />
                         </button>
-                        <button onClick={() => setDeleteConfirm(null)} className="text-gray-400 hover:text-white">
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9A8F80', padding: 2, display: 'flex' }}
+                        >
                           <X size={14} />
                         </button>
                       </div>
                     ) : (
                       <button
                         onClick={() => setDeleteConfirm(role.id)}
-                        className="text-gray-400 hover:text-red-400 transition-colors"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9A8F80', padding: 2, display: 'flex' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#C0614A'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#9A8F80'}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -205,7 +226,7 @@ export default function RolesManager() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">No roles found</td>
+                <td colSpan={6} className="empty-state">No roles found</td>
               </tr>
             )}
           </tbody>
@@ -214,59 +235,61 @@ export default function RolesManager() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <h2 className="text-lg font-semibold text-white">{editingRole ? 'Edit Role' : 'Add Role'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: 440 }}>
+            <div className="modal-header">
+              <div className="modal-title">{editingRole ? 'Edit Role' : 'Add Role'}</div>
+              <button onClick={() => setShowModal(false)} className="modal-close"><X size={16} /></button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Role Title *</label>
-                <input
-                  required
-                  value={form.title}
-                  onChange={e => setForm({ ...form, title: e.target.value })}
-                  className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg outline-none"
-                  placeholder="e.g. Restaurant Manager"
-                />
+            <form onSubmit={handleSave}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Role Title *</label>
+                  <input
+                    required
+                    value={form.title}
+                    onChange={e => setForm({ ...form, title: e.target.value })}
+                    className="form-control"
+                    placeholder="e.g. Restaurant Manager"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Department *</label>
+                  <select
+                    value={form.department}
+                    onChange={e => setForm({ ...form, department: e.target.value })}
+                    className="form-control"
+                  >
+                    {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Priority *</label>
+                  <select
+                    value={form.priority}
+                    onChange={e => setForm({ ...form, priority: e.target.value })}
+                    className="form-control"
+                  >
+                    {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Status *</label>
+                  <select
+                    value={form.status}
+                    onChange={e => setForm({ ...form, status: e.target.value })}
+                    className="form-control"
+                  >
+                    <option>Open</option>
+                    <option>Closed</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Department *</label>
-                <select
-                  value={form.department}
-                  onChange={e => setForm({ ...form, department: e.target.value })}
-                  className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg outline-none"
-                >
-                  {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Priority *</label>
-                <select
-                  value={form.priority}
-                  onChange={e => setForm({ ...form, priority: e.target.value })}
-                  className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg outline-none"
-                >
-                  {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Status *</label>
-                <select
-                  value={form.status}
-                  onChange={e => setForm({ ...form, status: e.target.value })}
-                  className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg outline-none"
-                >
-                  <option>Open</option>
-                  <option>Closed</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors">
+              <div className="modal-footer">
+                <button type="button" onClick={() => setShowModal(false)} className="btn btn-ghost">
                   Cancel
                 </button>
-                <button type="submit" disabled={saving} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg transition-colors">
+                <button type="submit" disabled={saving} className="btn btn-primary">
                   {saving ? 'Saving...' : editingRole ? 'Save Changes' : 'Add Role'}
                 </button>
               </div>
