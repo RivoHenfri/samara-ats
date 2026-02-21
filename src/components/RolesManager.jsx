@@ -17,7 +17,7 @@ const deptStyle = {
   Construction: { background: 'rgba(44,42,39,0.08)',   color: '#2C2A27' },
 }
 
-const emptyForm = { title: '', department: 'Hospitality', priority: 'Core', status: 'Open' }
+const emptyForm = { title: '', department: 'Hospitality', priority: 'Core', status: 'Open', job_context: '' }
 
 export default function RolesManager() {
   const [roles, setRoles] = useState([])
@@ -55,7 +55,7 @@ export default function RolesManager() {
 
   const openEdit = (role) => {
     setEditingRole(role)
-    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status })
+    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status, job_context: role.job_context || '' })
     setShowModal(true)
   }
 
@@ -283,6 +283,25 @@ export default function RolesManager() {
                     <option>Open</option>
                     <option>Closed</option>
                   </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">
+                    Job Context
+                    <span style={{ fontWeight: 400, color: 'var(--stone)', marginLeft: 6 }}>
+                      — used by AI to generate targeted screening questions
+                    </span>
+                  </label>
+                  <textarea
+                    value={form.job_context}
+                    onChange={e => setForm({ ...form, job_context: e.target.value })}
+                    className="form-control"
+                    placeholder={`Paste job requirements here. Include:\n• Must-have skills & tools\n• KPIs and success metrics\n• Seniority level & experience required\n• Culture fit & non-negotiables\n• Team structure & reporting line`}
+                    rows={6}
+                    style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: 12.5, lineHeight: 1.6 }}
+                  />
+                  <p className="form-hint" style={{ marginTop: 4 }}>
+                    The more detail you add, the more targeted and role-specific the AI questions will be.
+                  </p>
                 </div>
               </div>
               <div className="modal-footer">
