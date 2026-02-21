@@ -195,7 +195,7 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
     // 2. Create application
     const { error: appError } = await supabase
       .from('applications')
-      .insert({ candidate_id: candidate.id, role_id: form.role_id, stage: 'New' })
+      .insert({ candidate_id: candidate.id, role_id: form.role_id, stage: 'New', source: 'Manual' })
 
     if (appError) { setError(appError.message); setLoading(false); return }
 
