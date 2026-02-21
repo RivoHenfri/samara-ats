@@ -5,12 +5,12 @@ import CandidateDetail from './CandidateDetail'
 
 // ── Stage CSS ─────────────────────────────────────────────────
 const stageClass = {
-  New:       'stage-new',
+  New: 'stage-new',
   Screening: 'stage-screening',
   Interview: 'stage-interview',
-  Offer:     'stage-offer',
-  Hired:     'stage-hired',
-  Rejected:  'stage-rejected',
+  Offer: 'stage-offer',
+  Hired: 'stage-hired',
+  Rejected: 'stage-rejected',
 }
 
 // ── Division tag CSS ──────────────────────────────────────────
@@ -18,7 +18,7 @@ function deptTag(dept) {
   if (!dept) return 'tag-src'
   const d = dept.toLowerCase()
   if (d === 'hospitality') return 'tag-hosp'
-  if (d === 'operations')  return 'tag-ops'
+  if (d === 'operations') return 'tag-ops'
   if (d === 'construction') return 'tag-const'
   return 'tag-src'
 }
@@ -70,11 +70,11 @@ function WhatsAppButton({ candidate, role, stage }) {
 // ── MAIN COMPONENT ────────────────────────────────────────────
 export default function CandidatesList() {
   const [applications, setApplications] = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [search,       setSearch]       = useState('')
-  const [lombokOnly,   setLombokOnly]   = useState(false)
-  const [selectedApp,  setSelectedApp]  = useState(null)
-  const [selectedIds,  setSelectedIds]  = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [lombokOnly, setLombokOnly] = useState(false)
+  const [selectedApp, setSelectedApp] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
   const [lastSelected, setLastSelected] = useState(null)
   const [bulkMessaging, setBulkMessaging] = useState(null)
 
@@ -201,10 +201,11 @@ export default function CandidatesList() {
           <table className="data-table" style={{ minWidth: 1100 }}>
             <thead>
               <tr>
-                <th style={{ width: 40 }}>
-                  <input 
-                    type="checkbox" 
-                    checked={selectedIds.length > 0 && selectedIds.length === filtered.length}
+                <th style={{ width: 40, paddingLeft: 16 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    checked={filtered.length > 0 && selectedIds.length === filtered.length}
                     onChange={(e) => {
                       if (e.target.checked) setSelectedIds(filtered.slice(0, 50).map(a => a.id))
                       else setSelectedIds([])
@@ -235,18 +236,30 @@ export default function CandidatesList() {
                   <tr
                     key={app.id}
                     className={stale ? 'row-stale' : ''}
-                    style={isSelected ? { background: 'var(--teal-light)' } : {}}
-                    onClick={() => setSelectedApp(app)}
+                    style={{
+                      cursor: 'pointer',
+                      background: isSelected ? 'rgba(74, 124, 116, 0.08)' : (stale ? 'rgba(192, 97, 74, 0.03)' : 'white'),
+                      borderLeft: isSelected ? '4px solid var(--teal)' : 'none'
+                    }}
+                    onClick={(e) => {
+                      // If user clicks the row, handle multi-selection
+                      handleSelect(app, e.nativeEvent)
+                    }}
                   >
-                    <td onClick={e => e.stopPropagation()}>
-                      <input 
-                        type="checkbox" 
+                    <td style={{ paddingLeft: 16, width: 40 }}>
+                      <input
+                        type="checkbox"
+                        readOnly
                         checked={isSelected}
-                        onChange={(e) => handleSelect(app, e.nativeEvent)}
+                        style={{ width: 16, height: 16, cursor: 'pointer' }}
                       />
                     </td>
-                    <td>
-                      <span style={{ fontWeight: 600, color: 'var(--charcoal)' }}>
+                    <td onClick={(e) => {
+                      // Only open detail if clicking the NAME specifically
+                      e.stopPropagation()
+                      setSelectedApp(app)
+                    }}>
+                      <span style={{ fontWeight: 600, color: 'var(--charcoal)', textDecoration: 'underline', textDecorationColor: 'rgba(0,0,0,0.1)' }}>
                         {app.candidates?.full_name}
                       </span>
                     </td>
@@ -350,44 +363,44 @@ export default function CandidatesList() {
               Sending localized messages ({bulkMessaging.currentIndex + 1} of {bulkMessaging.apps.length})
             </p>
             <div style={{ background: 'var(--sand-light)', padding: 16, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
-              <strong>To:</strong> {bulkMessaging.apps[bulkMessaging.currentIndex].candidates.full_name}<br/>
+              <strong>To:</strong> {bulkMessaging.apps[bulkMessaging.currentIndex].candidates.full_name}<br />
               <strong>WhatsApp:</strong> {bulkMessaging.apps[bulkMessaging.currentIndex].candidates.whatsapp}
             </div>
-            
+
             <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <button 
-                onClick={() => setBulkMessaging({...bulkMessaging, lang: 'id'})} 
+              <button
+                onClick={() => setBulkMessaging({ ...bulkMessaging, lang: 'id' })}
                 className={`btn btn-sm ${bulkMessaging.lang === 'id' ? 'btn-primary' : 'btn-ghost'}`}
               >
                 ID (Bahasa)
               </button>
-              <button 
-                onClick={() => setBulkMessaging({...bulkMessaging, lang: 'en'})} 
+              <button
+                onClick={() => setBulkMessaging({ ...bulkMessaging, lang: 'en' })}
                 className={`btn btn-sm ${bulkMessaging.lang === 'en' ? 'btn-primary' : 'btn-ghost'}`}
               >
                 EN (English)
               </button>
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setBulkMessaging(null)} className="btn btn-ghost btn-sm">Cancel</button>
-              <button 
+              <button
                 onClick={() => {
                   const app = bulkMessaging.apps[bulkMessaging.currentIndex]
                   const raw = app.candidates?.whatsapp || ''
                   let number = raw.replace(/[\s\-\(\)]/g, '')
                   if (number.startsWith('0')) number = '62' + number.slice(1)
                   if (number.startsWith('+')) number = number.slice(1)
-                  
+
                   const message = getWhatsAppMessage(app.candidates, app.roles, bulkMessaging.stage, bulkMessaging.lang)
                   window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank')
-                  
+
                   if (bulkMessaging.currentIndex < bulkMessaging.apps.length - 1) {
-                    setBulkMessaging({...bulkMessaging, currentIndex: bulkMessaging.currentIndex + 1})
+                    setBulkMessaging({ ...bulkMessaging, currentIndex: bulkMessaging.currentIndex + 1 })
                   } else {
                     setBulkMessaging(null)
                   }
-                }} 
+                }}
                 className="btn btn-primary btn-sm"
               >
                 Send & Next
