@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { X, Send, Pencil, Check, ChevronDown, ExternalLink } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
+import ScreeningQuestions from './ScreeningQuestions'
 
 const STAGES  = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
 const ORIGINS = ['Lombok Local', 'Indonesian Expat', 'International']
@@ -35,6 +36,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
   const [roles,       setRoles]       = useState([])
   const [savingEdit,  setSavingEdit]  = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [activeTab,   setActiveTab]   = useState('notes') // 'notes' | 'screening'
 
   const [editData, setEditData] = useState({
     role_id:         app?.role_id || '',
@@ -288,68 +290,105 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
           </div>
         )}
 
-        {/* ── Notes list ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px', maxHeight: '30vh' }}>
-          <p style={{
-            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.16em',
-            textTransform: 'uppercase', color: 'var(--stone)',
-            marginBottom: 12,
-          }}>
-            Notes ({notes.length})
-          </p>
-          {notes.length === 0 ? (
-            <p style={{ color: 'var(--stone-light)', fontSize: 12.5, textAlign: 'center', padding: '20px 0' }}>
-              No notes yet. Add the first one below.
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {notes.map(note => (
-                <div key={note.id} style={{
-                  background: 'var(--sand-light)',
-                  border: '1px solid var(--sand-dark)',
-                  borderRadius: 8, padding: '10px 14px',
-                }}>
-                  <p style={{ fontSize: 12.5, color: 'var(--charcoal)', lineHeight: 1.55 }}>
-                    {note.content}
-                  </p>
-                  <p style={{ fontSize: 10.5, color: 'var(--stone-light)', marginTop: 5 }}>
-                    {note.created_by} · {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* ── Tabs ── */}
+        <div style={{
+          display: 'flex', borderBottom: '1px solid var(--sand-dark)',
+          padding: '0 22px',
+        }}>
+          {[
+            { key: 'notes',     label: `Notes (${notes.length})` },
+            { key: 'screening', label: 'Screening Questions'      },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 14px',
+                fontSize: 11.5,
+                fontWeight: activeTab === tab.key ? 600 : 400,
+                color: activeTab === tab.key ? 'var(--gold)' : 'var(--stone)',
+                background: 'none', border: 'none',
+                borderBottom: activeTab === tab.key ? '2px solid var(--gold)' : '2px solid transparent',
+                cursor: 'pointer', marginBottom: -1,
+                transition: 'color 0.15s',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── Add note ── */}
-        <div style={{
-          padding: '14px 22px',
-          borderTop: '1px solid var(--sand-dark)',
-          background: 'var(--sand-light)',
-        }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <textarea
-              value={newNote}
-              onChange={e => setNewNote(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Add a note… (Ctrl+Enter to save)"
-              rows={2}
-              className="form-control"
-              style={{ resize: 'none', flex: 1 }}
-            />
-            <button
-              onClick={addNote}
-              disabled={saving || !newNote.trim()}
-              className="btn btn-primary"
-              style={{ alignSelf: 'flex-end' }}
-            >
-              <Send size={13} />
-            </button>
-          </div>
-          <p style={{ fontSize: 10.5, color: 'var(--stone-light)', marginTop: 5 }}>
-            Ctrl+Enter to save quickly
-          </p>
-        </div>
+        {/* ── Notes tab ── */}
+        {activeTab === 'notes' && (
+          <>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px', maxHeight: '30vh' }}>
+              <p style={{
+                fontSize: 9.5, fontWeight: 700, letterSpacing: '0.16em',
+                textTransform: 'uppercase', color: 'var(--stone)',
+                marginBottom: 12,
+              }}>
+                Notes ({notes.length})
+              </p>
+              {notes.length === 0 ? (
+                <p style={{ color: 'var(--stone-light)', fontSize: 12.5, textAlign: 'center', padding: '20px 0' }}>
+                  No notes yet. Add the first one below.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {notes.map(note => (
+                    <div key={note.id} style={{
+                      background: 'var(--sand-light)',
+                      border: '1px solid var(--sand-dark)',
+                      borderRadius: 8, padding: '10px 14px',
+                    }}>
+                      <p style={{ fontSize: 12.5, color: 'var(--charcoal)', lineHeight: 1.55 }}>
+                        {note.content}
+                      </p>
+                      <p style={{ fontSize: 10.5, color: 'var(--stone-light)', marginTop: 5 }}>
+                        {note.created_by} · {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add note */}
+            <div style={{
+              padding: '14px 22px',
+              borderTop: '1px solid var(--sand-dark)',
+              background: 'var(--sand-light)',
+            }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <textarea
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Add a note… (Ctrl+Enter to save)"
+                  rows={2}
+                  className="form-control"
+                  style={{ resize: 'none', flex: 1 }}
+                />
+                <button
+                  onClick={addNote}
+                  disabled={saving || !newNote.trim()}
+                  className="btn btn-primary"
+                  style={{ alignSelf: 'flex-end' }}
+                >
+                  <Send size={13} />
+                </button>
+              </div>
+              <p style={{ fontSize: 10.5, color: 'var(--stone-light)', marginTop: 5 }}>
+                Ctrl+Enter to save quickly
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* ── Screening Questions tab ── */}
+        {activeTab === 'screening' && (
+          <ScreeningQuestions app={app} />
+        )}
 
       </div>
     </div>
