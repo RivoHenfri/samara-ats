@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import CandidateDetail from './CandidateDetail'
 
 // ── WhatsApp message templates (unchanged) ────────────────────
-function getWhatsAppMessage(candidate, role, stage, lang) {
+export function getWhatsAppMessage(candidate, role, stage, lang) {
   const name = candidate?.full_name?.split(' ')[0] || 'there'
   const roleTitle = role?.title || 'the position'
 
@@ -89,17 +89,17 @@ function deptTag(dept) {
   if (!dept) return 'tag-src'
   const d = dept.toLowerCase()
   if (d === 'hospitality') return 'tag-hosp'
-  if (d === 'operations')  return 'tag-ops'
+  if (d === 'operations') return 'tag-ops'
   if (d === 'construction') return 'tag-const'
   return 'tag-src'
 }
 
 // ── CANDIDATE CARD ────────────────────────────────────────────
-export default function CandidateCard({ app, onDragStart }) {
+export default function CandidateCard({ app, onDragStart, selected, onSelect }) {
   if (!app) return null
 
   const [showDetail, setShowDetail] = useState(false)
-  const [noteCount,  setNoteCount]  = useState(0)
+  const [noteCount, setNoteCount] = useState(0)
   const stale = isStagnant(app)
   const isLombok = app.candidates?.origin === 'Lombok Local'
 
@@ -118,7 +118,12 @@ export default function CandidateCard({ app, onDragStart }) {
       <div
         draggable
         onDragStart={() => onDragStart(app)}
+        onClick={(e) => onSelect && onSelect(app, e.nativeEvent)}
         className={`k-card${stale ? ' stale' : ''}`}
+        style={{
+          cursor: onSelect ? 'pointer' : 'grab',
+          ...(selected ? { outline: '2px solid var(--teal)' } : {})
+        }}
       >
         {/* Stale / Lombok badge */}
         {stale
