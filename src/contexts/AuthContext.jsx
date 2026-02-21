@@ -13,8 +13,12 @@ export function AuthProvider({ children }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
-      // Fetch profile separately, non-blocking
-      if (session?.user) {
+
+      // Look for role in the verified JWT first, then fallback
+      const jwtRole = session?.user?.app_metadata?.role;
+      if (jwtRole) {
+        setProfile({ id: session.user.id, role: jwtRole, tenant_id: session.user.app_metadata.tenant_id });
+      } else if (session?.user) {
         supabase
           .from('profiles')
           .select('*')
@@ -29,7 +33,10 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null)
-        if (session?.user) {
+        const jwtRole = session?.user?.app_metadata?.role;
+        if (jwtRole) {
+          setProfile({ id: session.user.id, role: jwtRole, tenant_id: session.user.app_metadata.tenant_id });
+        } else if (session?.user) {
           supabase
             .from('profiles')
             .select('*')
