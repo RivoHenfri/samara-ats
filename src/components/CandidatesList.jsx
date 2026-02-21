@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Search, MessageCircle, ExternalLink, X, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, MessageCircle, ExternalLink, X, RotateCcw, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
 import CandidateDetail from './CandidateDetail'
 import MultiSelectDropdown from './MultiSelectDropdown'
+import { ScoreBadge } from './CompatibilityScore'
 
 const stages = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
@@ -90,6 +91,7 @@ export default function CandidatesList() {
   const [selectedIds, setSelectedIds] = useState([])
   const [lastSelected, setLastSelected] = useState(null)
   const [bulkMessaging, setBulkMessaging] = useState(null)
+  const [scores, setScores] = useState({}) // appId -> overall_score
 
   // Filters from URL
   const search = searchParams.get('q') || ''
@@ -97,6 +99,7 @@ export default function CandidatesList() {
   const deptFilters = searchParams.get('depts')?.split(',').filter(Boolean) || []
   const stageFilters = searchParams.get('stages')?.split(',').filter(Boolean) || []
   const originFilters = searchParams.get('origins')?.split(',').filter(Boolean) || []
+  const highMatch = searchParams.get('highMatch') === '1'
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = 20
 
@@ -116,9 +119,32 @@ export default function CandidatesList() {
       .select('*, candidates!inner(*), roles!inner(*)', { count: 'exact' })
       .order('created_at', { ascending: false })
 
+    // High Match pre-filter: restrict to application IDs with latest score >= 80
+    if (highMatch) {
+      const { data: scoreData } = await supabase
+        .from('application_scores')
+        .select('application_id, overall_score, created_at')
+        .gte('overall_score', 80)
+        .order('created_at', { ascending: false })
+
+      if (!scoreData || scoreData.length === 0) {
+        setApplications([])
+        setTotalCount(0)
+        setScores({})
+        setLoading(false)
+        return
+      }
+
+      // Keep only the latest score per application to avoid duplicates
+      const latestByApp = {}
+      for (const row of scoreData) {
+        if (!latestByApp[row.application_id]) latestByApp[row.application_id] = row
+      }
+      query = query.in('id', Object.keys(latestByApp))
+    }
+
     // Apply Filters
     if (search) {
-      // Search in candidates table (name and whatsapp)
       query = query.or(`full_name.ilike.%${search}%,whatsapp.ilike.%${search}%`, { foreignTable: 'candidates' })
     }
 
@@ -150,9 +176,30 @@ export default function CandidatesList() {
     } else {
       setApplications(data || [])
       setTotalCount(count || 0)
+
+      // Fetch latest score for each application on this page
+      if (data && data.length > 0) {
+        const appIds = data.map(a => a.id)
+        const { data: scoreRows } = await supabase
+          .from('application_scores')
+          .select('application_id, overall_score, created_at')
+          .in('application_id', appIds)
+          .order('created_at', { ascending: false })
+
+        // Keep only latest per application
+        const scoreMap = {}
+        for (const row of (scoreRows || [])) {
+          if (!(row.application_id in scoreMap)) {
+            scoreMap[row.application_id] = row.overall_score
+          }
+        }
+        setScores(scoreMap)
+      } else {
+        setScores({})
+      }
     }
     setLoading(false)
-  }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), page])
+  }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), highMatch, page])
 
   useEffect(() => {
     fetchData()
@@ -266,6 +313,19 @@ export default function CandidatesList() {
         <h1 className="page-title">All Candidates V2</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
+            onClick={() => {
+              const next = new URLSearchParams(searchParams)
+              if (highMatch) next.delete('highMatch')
+              else next.set('highMatch', '1')
+              next.set('page', '1')
+              setSearchParams(next)
+            }}
+            className={`btn btn-sm ${highMatch ? 'btn-teal' : 'btn-ghost'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <Zap size={12} /> High Match (80+)
+          </button>
+          <button
             onClick={() => updateFilters('origins', originFilters.includes('Lombok Local') ? originFilters.filter(o => o !== 'Lombok Local') : [...originFilters, 'Lombok Local'])}
             className={`btn btn-sm ${originFilters.includes('Lombok Local') ? 'btn-teal' : 'btn-ghost'}`}
           >
@@ -357,7 +417,7 @@ export default function CandidatesList() {
               </div>
             </div>
 
-            {(roleFilters.length > 0 || deptFilters.length > 0 || stageFilters.length > 0 || originFilters.length > 0 || search) && (
+            {(roleFilters.length > 0 || deptFilters.length > 0 || stageFilters.length > 0 || originFilters.length > 0 || search || highMatch) && (
               <button
                 onClick={clearAllFilters}
                 className="btn btn-ghost btn-sm text-stone flex items-center gap-1.5"
@@ -373,6 +433,18 @@ export default function CandidatesList() {
             <span style={{ fontSize: 11, color: 'var(--stone)', marginRight: 4, fontWeight: 500 }}>
               {loading ? 'Searching...' : `${totalCount} candidate${totalCount !== 1 ? 's' : ''} found`}
             </span>
+
+            {highMatch && (
+              <span className="tag flex items-center gap-1" style={{ color: 'var(--teal)', background: 'var(--teal-bg)', borderColor: 'rgba(74,124,116,0.3)' }}>
+                ⚡ High Match (80+)
+                <X size={10} className="cursor-pointer" onClick={() => {
+                  const next = new URLSearchParams(searchParams)
+                  next.delete('highMatch')
+                  next.set('page', '1')
+                  setSearchParams(next)
+                }} />
+              </span>
+            )}
 
             {roleFilters.map(id => {
               const role = roles.find(r => r.id === id)
@@ -429,6 +501,7 @@ export default function CandidatesList() {
                 <th>Dept</th>
                 <th>Stage</th>
                 <th>Origin</th>
+                <th>Score</th>
                 <th>Current Salary</th>
                 <th>Expected Salary</th>
                 <th>CV</th>
@@ -493,6 +566,9 @@ export default function CandidatesList() {
                           {app.candidates?.origin || '—'}
                         </span>
                       )}
+                    </td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <ScoreBadge score={scores[app.id] ?? null} size="sm" />
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
                       {displayIDR(app.candidates?.current_salary)}

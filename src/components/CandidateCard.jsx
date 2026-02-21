@@ -3,6 +3,7 @@ import { Clock, MessageCircle, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import CandidateDetail from './CandidateDetail'
+import { ScoreBadge } from './CompatibilityScore'
 
 // ── WhatsApp message templates (unchanged) ────────────────────
 export function getWhatsAppMessage(candidate, role, stage, lang) {
@@ -100,10 +101,11 @@ export default function CandidateCard({ app, onDragStart, selected, onSelect }) 
 
   const [showDetail, setShowDetail] = useState(false)
   const [noteCount, setNoteCount] = useState(0)
+  const [score, setScore] = useState(undefined) // undefined = not fetched yet, null = no score
   const stale = isStagnant(app)
   const isLombok = app.candidates?.origin === 'Lombok Local'
 
-  useEffect(() => { fetchNoteCount() }, [app.id])
+  useEffect(() => { fetchNoteCount(); fetchScore() }, [app.id])
 
   const fetchNoteCount = async () => {
     const { count } = await supabase
@@ -111,6 +113,17 @@ export default function CandidateCard({ app, onDragStart, selected, onSelect }) 
       .select('id', { count: 'exact' })
       .eq('application_id', app.id)
     setNoteCount(count || 0)
+  }
+
+  const fetchScore = async () => {
+    const { data } = await supabase
+      .from('application_scores')
+      .select('overall_score')
+      .eq('application_id', app.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setScore(data?.overall_score ?? null)
   }
 
   return (
@@ -159,6 +172,11 @@ export default function CandidateCard({ app, onDragStart, selected, onSelect }) 
           )}
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Score badge */}
+            {score != null && score !== undefined && (
+              <ScoreBadge score={score} size="sm" />
+            )}
+
             {/* Note count */}
             {noteCount > 0 && (
               <button
