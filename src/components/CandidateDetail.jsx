@@ -5,6 +5,7 @@ import { X, Send, Pencil, Check } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import CVSourcePanel from './CVSourcePanel'
 import ScreeningQuestions from './ScreeningQuestions'
+import CompatibilityScore from './CompatibilityScore'
 
 const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
 const ORIGINS = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
@@ -39,7 +40,8 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
   const [roles, setRoles] = useState([])
   const [savingEdit, setSavingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState('notes') // 'notes' | 'screening'
+  const [activeTab, setActiveTab] = useState('notes') // 'notes' | 'screening' | 'score'
+  const [latestScore, setLatestScore] = useState(null)
 
   const [editData, setEditData] = useState({
     role_id: app?.role_id || '',
@@ -53,8 +55,19 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
   })
 
   useEffect(() => {
-    if (app) { fetchNotes(); fetchRoles() }
+    if (app) { fetchNotes(); fetchRoles(); fetchLatestScore() }
   }, [app])
+
+  const fetchLatestScore = async () => {
+    const { data } = await supabase
+      .from('application_scores')
+      .select('overall_score')
+      .eq('application_id', app.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setLatestScore(data?.overall_score ?? null)
+  }
 
   const fetchNotes = async () => {
     const { data } = await supabase
@@ -278,6 +291,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
           {[
             { key: 'notes', label: `Notes (${notes.length})` },
             { key: 'screening', label: 'Screening Questions' },
+            { key: 'score', label: latestScore != null ? `AI Score · ${latestScore}` : 'AI Score' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -368,6 +382,11 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
         {/* ── Screening Questions tab ── */}
         {activeTab === 'screening' && (
           <ScreeningQuestions app={app} />
+        )}
+
+        {/* ── AI Score tab ── */}
+        {activeTab === 'score' && (
+          <CompatibilityScore app={app} onScored={(score) => setLatestScore(score)} />
         )}
 
       </div>
