@@ -3,8 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { X, Upload, Link2, Loader2, CheckCircle, FileText, AlertTriangle } from 'lucide-react'
 
-const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY
-
 const ALLOWED_TYPES = {
   'application/pdf': 'PDF',
   'application/msword': 'DOC',
@@ -15,18 +13,11 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 // ── AI: full CV extraction ────────────────────────────────────────────────────
 // Returns structured data used to: (a) auto-fill the form, (b) store in parsed_data
 async function extractCVWithClaude(base64PDF) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'pdfs-2024-09-25',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
+      beta: 'pdfs-2024-09-25',
       messages: [{
         role: 'user',
         content: [
@@ -60,11 +51,11 @@ async function extractCVWithClaude(base64PDF) {
           },
         ],
       }],
-    }),
+    },
   })
-  const data = await response.json()
-  if (data.error) throw new Error(data.error.message || 'API error')
-  if (!data.content?.[0]?.text) throw new Error('No response from Claude')
+  if (error) throw new Error(error.message || 'Claude proxy error')
+  if (data?.error) throw new Error(data.error.message || 'API error')
+  if (!data?.content?.[0]?.text) throw new Error('No response from Claude')
   return JSON.parse(data.content[0].text.replace(/```json|```/g, '').trim())
 }
 
@@ -140,7 +131,7 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
     setCvFile(file)
 
     // Only scan PDFs with Claude AI
-    if (file.type !== 'application/pdf' || !ANTHROPIC_KEY) return
+    if (file.type !== 'application/pdf') return
 
     setScanning(true)
     setScanned(false)
