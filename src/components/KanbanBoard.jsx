@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import CandidateCard, { getWhatsAppMessage } from './CandidateCard'
 import AddCandidateModal from './AddCandidateModal'
-import { Plus } from 'lucide-react'
+import { Plus, Search, RotateCcw, X } from 'lucide-react'
+import MultiSelectDropdown from './MultiSelectDropdown'
 
 const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+const departments = ['Hospitality', 'Operations', 'Construction']
+const origins = ['Lombok Local', 'Indonesian Expat', 'International']
 
 // CSS class for each column
 const colClass = {
@@ -17,26 +21,86 @@ const colClass = {
 }
 
 export default function KanbanBoard() {
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [applications, setApplications] = useState([])
+  const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [lombokOnly, setLombokOnly] = useState(false)
-  const [filterDept, setFilterDept] = useState('All')
   const [dragging, setDragging] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [lastSelected, setLastSelected] = useState(null)
   const [bulkMessaging, setBulkMessaging] = useState(null)
 
-  useEffect(() => { fetchApplications() }, [])
+  // Filters from URL
+  const search = searchParams.get('q') || ''
+  const roleFilters = searchParams.get('roles')?.split(',').filter(Boolean) || []
+  const deptFilters = searchParams.get('depts')?.split(',').filter(Boolean) || []
+  const originFilters = searchParams.get('origins')?.split(',').filter(Boolean) || []
 
-  const fetchApplications = async () => {
+  useEffect(() => {
+    // Fetch roles for the filter dropdown
+    supabase.from('roles').select('id, title, department').order('title').then(({ data }) => {
+      setRoles(data || [])
+    })
+  }, [])
+
+  const fetchApplications = useCallback(async () => {
+    setLoading(true)
     setSelectedIds([])
-    const { data } = await supabase
+
+    let query = supabase
       .from('applications')
-      .select('*, candidates(*), roles(*)')
+      .select('*, candidates!inner(*), roles!inner(*)')
       .order('created_at', { ascending: false })
-    setApplications(data || [])
+
+    // Apply Filters
+    if (search) {
+      query = query.or(`full_name.ilike.%${search}%,whatsapp.ilike.%${search}%`, { foreignTable: 'candidates' })
+    }
+
+    if (roleFilters.length > 0) {
+      query = query.in('role_id', roleFilters)
+    }
+
+    if (deptFilters.length > 0) {
+      query = query.in('roles.department', deptFilters)
+    }
+
+    if (originFilters.length > 0) {
+      query = query.in('candidates.origin', originFilters)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching applications:', error)
+    } else {
+      setApplications(data || [])
+    }
     setLoading(false)
+  }, [search, roleFilters.join(','), deptFilters.join(','), originFilters.join(',')])
+
+  useEffect(() => {
+    fetchApplications()
+  }, [fetchApplications])
+
+  const updateFilters = (key, values) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (values && values.length > 0) {
+      if (Array.isArray(values)) {
+        nextParams.set(key, values.join(','))
+      } else {
+        nextParams.set(key, values)
+      }
+    } else {
+      nextParams.delete(key)
+    }
+    setSearchParams(nextParams)
+  }
+
+  const clearAllFilters = () => {
+    setSearchParams(new URLSearchParams())
   }
 
   const handleDragStart = (app) => setDragging(app)
@@ -48,22 +112,16 @@ export default function KanbanBoard() {
     fetchApplications()
   }
 
-  const filtered = applications.filter(app => {
-    if (lombokOnly && app.candidates?.origin !== 'Lombok Local') return false
-    if (filterDept !== 'All' && app.roles?.department !== filterDept) return false
-    return true
-  })
-
   const handleSelect = (app, e) => {
     e.stopPropagation && e.stopPropagation()
     const isSelected = selectedIds.includes(app.id)
     if (e.shiftKey && lastSelected) {
-      const lastIdx = filtered.findIndex(a => a.id === lastSelected)
-      const currIdx = filtered.findIndex(a => a.id === app.id)
+      const lastIdx = applications.findIndex(a => a.id === lastSelected)
+      const currIdx = applications.findIndex(a => a.id === app.id)
       if (lastIdx !== -1 && currIdx !== -1) {
         const start = Math.min(lastIdx, currIdx)
         const end = Math.max(lastIdx, currIdx)
-        const slice = filtered.slice(start, end + 1).map(a => a.id)
+        const slice = applications.slice(start, end + 1).map(a => a.id)
         const newSelected = new Set([...selectedIds, ...slice])
         setSelectedIds(Array.from(newSelected).slice(0, 50))
         setLastSelected(app.id)
@@ -86,7 +144,7 @@ export default function KanbanBoard() {
   const handleBulkReject = async () => {
     if (!window.confirm(`Are you sure you want to reject ${selectedIds.length} candidate(s)?`)) return
     await supabase.from('applications').update({ stage: 'Rejected' }).in('id', selectedIds)
-    const appsToMessage = filtered.filter(a => selectedIds.includes(a.id) && a.candidates?.whatsapp)
+    const appsToMessage = applications.filter(a => selectedIds.includes(a.id) && a.candidates?.whatsapp)
     if (appsToMessage.length > 0) {
       setBulkMessaging({ apps: appsToMessage, currentIndex: 0, lang: 'id', stage: 'Rejected' })
     }
@@ -114,27 +172,13 @@ export default function KanbanBoard() {
       <div className="topbar">
         <h1 className="page-title">Pipeline</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-
           {/* Lombok First toggle */}
           <button
-            onClick={() => setLombokOnly(!lombokOnly)}
-            className={`btn btn-sm ${lombokOnly ? 'btn-teal' : 'btn-ghost'}`}
+            onClick={() => updateFilters('origins', originFilters.includes('Lombok Local') ? originFilters.filter(o => o !== 'Lombok Local') : [...originFilters, 'Lombok Local'])}
+            className={`btn btn-sm ${originFilters.includes('Lombok Local') ? 'btn-teal' : 'btn-ghost'}`}
           >
             🌴 Lombok First
           </button>
-
-          {/* Department filter */}
-          <select
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
-            className="form-control"
-            style={{ width: 'auto', padding: '5px 28px 5px 10px', fontSize: 11 }}
-          >
-            <option>All</option>
-            <option>Hospitality</option>
-            <option>Operations</option>
-            <option>Construction</option>
-          </select>
 
           {/* Add Candidate */}
           <button
@@ -148,6 +192,84 @@ export default function KanbanBoard() {
       </div>
 
       <div className="page-body" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+
+        {/* Filter Bar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="search-wrap" style={{ flex: 'none', width: 260 }}>
+              <Search size={13} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => updateFilters('q', e.target.value)}
+                placeholder="Search candidates…"
+                className="search-input"
+              />
+            </div>
+
+            <MultiSelectDropdown
+              label="Role"
+              options={roles.map(r => ({ label: r.title, value: r.id }))}
+              selectedValues={roleFilters}
+              onChange={vals => updateFilters('roles', vals)}
+            />
+
+            <MultiSelectDropdown
+              label="Department"
+              options={departments.map(d => ({ label: d, value: d }))}
+              selectedValues={deptFilters}
+              onChange={vals => updateFilters('depts', vals)}
+            />
+
+            <MultiSelectDropdown
+              label="Origin"
+              options={origins.map(o => ({ label: o, value: o }))}
+              selectedValues={originFilters}
+              onChange={vals => updateFilters('origins', vals)}
+            />
+
+            {(roleFilters.length > 0 || deptFilters.length > 0 || originFilters.length > 0 || search) && (
+              <button
+                onClick={clearAllFilters}
+                className="btn btn-ghost btn-sm text-stone flex items-center gap-1.5"
+                style={{ border: 'none', background: 'none', color: 'var(--stone)' }}
+              >
+                <RotateCcw size={12} /> Clear All
+              </button>
+            )}
+          </div>
+
+          {/* Active Tags */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span style={{ fontSize: 11, color: 'var(--stone)', marginRight: 4, fontWeight: 500 }}>
+              {loading ? 'Searching...' : `${applications.length} candidate${applications.length !== 1 ? 's' : ''} found`}
+            </span>
+
+            {roleFilters.map(id => {
+              const role = roles.find(r => r.id === id)
+              return (
+                <span key={id} className="tag tag-src flex items-center gap-1">
+                  {role?.title || id}
+                  <X size={10} className="cursor-pointer" onClick={() => updateFilters('roles', roleFilters.filter(v => v !== id))} />
+                </span>
+              )
+            })}
+
+            {deptFilters.map(d => (
+              <span key={d} className="tag tag-src flex items-center gap-1">
+                {d}
+                <X size={10} className="cursor-pointer" onClick={() => updateFilters('depts', deptFilters.filter(v => v !== d))} />
+              </span>
+            ))}
+
+            {originFilters.map(o => (
+              <span key={o} className="tag tag-src flex items-center gap-1">
+                {o}
+                <X size={10} className="cursor-pointer" onClick={() => updateFilters('origins', originFilters.filter(v => v !== o))} />
+              </span>
+            ))}
+          </div>
+        </div>
 
         {/* 48h stale alert */}
         {staleCount > 0 && (
@@ -167,7 +289,7 @@ export default function KanbanBoard() {
         {/* Kanban board */}
         <div className="kanban-wrap" style={{ flex: 1 }}>
           {STAGES.map(stage => {
-            const cards = filtered.filter(a => a.stage === stage)
+            const cards = applications.filter(a => a.stage === stage)
             return (
               <div
                 key={stage}
