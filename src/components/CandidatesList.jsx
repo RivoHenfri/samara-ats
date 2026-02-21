@@ -7,7 +7,7 @@ import MultiSelectDropdown from './MultiSelectDropdown'
 
 const stages = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
-const origins = ['Lombok Local', 'Indonesian Expat', 'International']
+const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
 const stageClass = {
   New: 'stage-new',

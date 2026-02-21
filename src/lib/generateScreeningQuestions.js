@@ -13,7 +13,7 @@
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY
 
 export const PROMPT_VERSION = 'v2'
-export const MODEL_VERSION  = 'claude-sonnet-4-6'
+export const MODEL_VERSION = 'claude-sonnet-4-6'
 
 // ── Risk detection ────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ function detectRisks(candidate, role) {
 
   // Large salary jump (> 30%)
   const curr = parseInt(candidate.current_salary)
-  const exp  = parseInt(candidate.expected_salary)
+  const exp = parseInt(candidate.expected_salary)
   if (curr > 0 && exp > 0) {
     const pct = Math.round(((exp - curr) / curr) * 100)
     if (pct > 30) {
@@ -39,9 +39,9 @@ function detectRisks(candidate, role) {
       'International candidate: verify relocation readiness, work permit eligibility, ' +
       'and long-term commitment to Lombok'
     )
-  } else if (candidate.origin === 'Indonesian Expat') {
+  } else if (candidate.origin === 'Indonesian (Non-Lombok)') {
     risks.push(
-      'Indonesian expat: confirm willingness to relocate to Lombok and familiarity ' +
+      'Indonesian (Non-Lombok): confirm willingness to relocate to Lombok and familiarity ' +
       'with local market conditions'
     )
   }
@@ -60,11 +60,11 @@ function detectRisks(candidate, role) {
 
 function buildPrompt(app) {
   const candidate = app.candidates
-  const role      = app.roles
+  const role = app.roles
 
   const salaryLine = (() => {
     const curr = candidate.current_salary
-    const exp  = candidate.expected_salary
+    const exp = candidate.expected_salary
     if (curr && exp)
       return `Current Rp ${parseInt(curr).toLocaleString('id-ID')}/mo → Expected Rp ${parseInt(exp).toLocaleString('id-ID')}/mo`
     if (exp)
@@ -72,10 +72,10 @@ function buildPrompt(app) {
     return 'Not provided'
   })()
 
-  const risks       = detectRisks(candidate, role)
+  const risks = detectRisks(candidate, role)
   const riskSection = risks.length > 0
     ? `\nIDENTIFIED RISK AREAS — generate at least one probing question per risk:\n` +
-      risks.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
+    risks.map((r, i) => `  ${i + 1}. ${r}`).join('\n')
     : '\nNo specific risk areas flagged. Generate one general verification question.'
 
   const jobContextSection = role.job_context?.trim()

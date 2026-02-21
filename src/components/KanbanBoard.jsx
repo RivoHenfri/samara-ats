@@ -8,7 +8,7 @@ import MultiSelectDropdown from './MultiSelectDropdown'
 
 const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
-const origins = ['Lombok Local', 'Indonesian Expat', 'International']
+const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
 // CSS class for each column
 const colClass = {

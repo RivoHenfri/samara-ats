@@ -82,14 +82,14 @@ function parseRows(data) {
   }
   return rows
     .map(row => ({
-      full_name:  get(row, 'candidate name', 'name'),
-      email:      get(row, 'email'),
-      whatsapp:   normalizePhone(get(row, 'phone', 'whatsapp', 'mobile')),
-      position:   get(row, 'position', 'role', 'job title'),
+      full_name: get(row, 'candidate name', 'name'),
+      email: get(row, 'email'),
+      whatsapp: normalizePhone(get(row, 'phone', 'whatsapp', 'mobile')),
+      position: get(row, 'position', 'role', 'job title'),
       department: get(row, 'dept', 'department'),
-      source:     get(row, 'source'),
-      stage:      mapStage(get(row, 'last recruitment stage', 'stage', 'status', 'prescreen', 'result')),
-      notes:      get(row, 'failed remark', 'comment', 'notes', 'remark'),
+      source: get(row, 'source'),
+      stage: mapStage(get(row, 'last recruitment stage', 'stage', 'status', 'prescreen', 'result')),
+      notes: get(row, 'failed remark', 'comment', 'notes', 'remark'),
     }))
     .filter(r => r.full_name && r.full_name.length > 1)
 }
@@ -103,13 +103,13 @@ const stageClass = {
 
 // ── IMPORT PAGE ───────────────────────────────────────────────
 export default function Import() {
-  const [preview,    setPreview]    = useState([])
-  const [fileName,   setFileName]   = useState('')
-  const [importing,  setImporting]  = useState(false)
-  const [progress,   setProgress]   = useState(0)
-  const [results,    setResults]    = useState(null)
-  const [dragOver,   setDragOver]   = useState(false)
-  const [errorLog,   setErrorLog]   = useState([])
+  const [preview, setPreview] = useState([])
+  const [fileName, setFileName] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [results, setResults] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [errorLog, setErrorLog] = useState([])
   const fileRef = useRef()
 
   const handleFile = (file) => {
@@ -155,7 +155,7 @@ export default function Import() {
         } else {
           const { data: newCand, error: insertCandErr } = await supabase
             .from('candidates')
-            .insert({ full_name: row.full_name, email: row.email || null, whatsapp: row.whatsapp || null, origin: 'Indonesian Expat' })
+            .insert({ full_name: row.full_name, email: row.email || null, whatsapp: row.whatsapp || null, origin: 'Indonesian (Non-Lombok)' })
             .select('id').single()
           if (insertCandErr) { errDetails.push(`${row.full_name}: insert failed — ${insertCandErr.message}`); errors++; continue }
           candidateId = newCand.id

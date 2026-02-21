@@ -6,16 +6,16 @@ import { formatDistanceToNow, format } from 'date-fns'
 import CVSourcePanel from './CVSourcePanel'
 import ScreeningQuestions from './ScreeningQuestions'
 
-const STAGES  = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
-const ORIGINS = ['Lombok Local', 'Indonesian Expat', 'International']
+const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+const ORIGINS = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
 const stageClass = {
-  New:       'stage-new',
+  New: 'stage-new',
   Screening: 'stage-screening',
   Interview: 'stage-interview',
-  Offer:     'stage-offer',
-  Hired:     'stage-hired',
-  Rejected:  'stage-rejected',
+  Offer: 'stage-offer',
+  Hired: 'stage-hired',
+  Rejected: 'stage-rejected',
 }
 
 function formatIDR(value) {
@@ -32,21 +32,21 @@ function displayIDR(num) {
 
 export default function CandidateDetail({ app, onClose, onUpdated }) {
   const { isManager } = useAuth()
-  const [notes,       setNotes]       = useState([])
-  const [newNote,     setNewNote]     = useState('')
-  const [saving,      setSaving]      = useState(false)
-  const [editMode,    setEditMode]    = useState(false)
-  const [roles,       setRoles]       = useState([])
-  const [savingEdit,  setSavingEdit]  = useState(false)
+  const [notes, setNotes] = useState([])
+  const [newNote, setNewNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [roles, setRoles] = useState([])
+  const [savingEdit, setSavingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [activeTab,   setActiveTab]   = useState('notes') // 'notes' | 'screening'
+  const [activeTab, setActiveTab] = useState('notes') // 'notes' | 'screening'
 
   const [editData, setEditData] = useState({
-    role_id:         app?.role_id || '',
-    stage:           app?.stage || '',
-    whatsapp:        app?.candidates?.whatsapp || '',
-    origin:          app?.candidates?.origin || '',
-    current_salary:  app?.candidates?.current_salary
+    role_id: app?.role_id || '',
+    stage: app?.stage || '',
+    whatsapp: app?.candidates?.whatsapp || '',
+    origin: app?.candidates?.origin || '',
+    current_salary: app?.candidates?.current_salary
       ? parseInt(app.candidates.current_salary).toLocaleString('id-ID') : '',
     expected_salary: app?.candidates?.expected_salary
       ? parseInt(app.candidates.expected_salary).toLocaleString('id-ID') : '',
@@ -93,9 +93,9 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
         .update({ stage: editData.stage, role_id: editData.role_id })
         .eq('id', app.id)
       await supabase.from('candidates').update({
-        whatsapp:        editData.whatsapp,
-        origin:          editData.origin,
-        current_salary:  editData.current_salary ? parseInt(parseIDR(editData.current_salary)) : null,
+        whatsapp: editData.whatsapp,
+        origin: editData.origin,
+        current_salary: editData.current_salary ? parseInt(parseIDR(editData.current_salary)) : null,
         expected_salary: editData.expected_salary ? parseInt(parseIDR(editData.expected_salary)) : null,
       }).eq('id', app.candidates?.id)
       setSaveSuccess(true)
@@ -111,8 +111,8 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
   if (!app) return null
 
   const candidate = app.candidates
-  const role      = app.roles
-  const isLombok  = candidate?.origin === 'Lombok Local'
+  const role = app.roles
+  const isLombok = candidate?.origin === 'Lombok Local'
 
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -253,8 +253,8 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
             gap: '12px 20px',
           }}>
             <InfoRow label="WhatsApp" value={<span style={{ fontFamily: 'monospace' }}>{candidate?.whatsapp || '—'}</span>} />
-            <InfoRow label="Applied"  value={format(new Date(app.created_at), 'dd MMM yyyy')} />
-            <InfoRow label="Current Salary"  value={displayIDR(candidate?.current_salary)} />
+            <InfoRow label="Applied" value={format(new Date(app.created_at), 'dd MMM yyyy')} />
+            <InfoRow label="Current Salary" value={displayIDR(candidate?.current_salary)} />
             <InfoRow label="Expected Salary" value={displayIDR(candidate?.expected_salary)} />
           </div>
         )}
@@ -276,8 +276,8 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
           padding: '0 22px',
         }}>
           {[
-            { key: 'notes',     label: `Notes (${notes.length})` },
-            { key: 'screening', label: 'Screening Questions'      },
+            { key: 'notes', label: `Notes (${notes.length})` },
+            { key: 'screening', label: 'Screening Questions' },
           ].map(tab => (
             <button
               key={tab.key}

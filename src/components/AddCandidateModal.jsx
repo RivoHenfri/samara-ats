@@ -91,26 +91,26 @@ function getLinkWarning(url) {
 // ── Modal ─────────────────────────────────────────────────────────────────────
 export default function AddCandidateModal({ onClose, onSuccess }) {
   const { user } = useAuth()
-  const [roles,    setRoles]    = useState([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState(null)
+  const [roles, setRoles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   // CV state
-  const [cvMode,        setCvMode]        = useState('upload')  // 'upload' | 'link'
-  const [cvFile,        setCvFile]        = useState(null)      // File object to upload after submit
-  const [cvLink,        setCvLink]        = useState('')
-  const [scanning,      setScanning]      = useState(false)
-  const [scanned,       setScanned]       = useState(false)
-  const [parsedCVData,  setParsedCVData]  = useState(null)      // Full AI extraction stored in cv_sources
+  const [cvMode, setCvMode] = useState('upload')  // 'upload' | 'link'
+  const [cvFile, setCvFile] = useState(null)      // File object to upload after submit
+  const [cvLink, setCvLink] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const [scanned, setScanned] = useState(false)
+  const [parsedCVData, setParsedCVData] = useState(null)      // Full AI extraction stored in cv_sources
   const fileRef = useRef()
 
   const [form, setForm] = useState({
-    full_name:       '',
-    whatsapp:        '',
-    email:           '',
-    origin:          'Lombok Local',
-    role_id:         '',
-    current_salary:  '',
+    full_name: '',
+    whatsapp: '',
+    email: '',
+    origin: 'Lombok Local',
+    role_id: '',
+    current_salary: '',
     expected_salary: '',
   })
 
@@ -154,9 +154,9 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
         setParsedCVData(extracted)
         setForm(f => ({
           ...f,
-          full_name:      extracted.full_name      || f.full_name,
-          whatsapp:       extracted.whatsapp       || f.whatsapp,
-          email:          extracted.email          || f.email,
+          full_name: extracted.full_name || f.full_name,
+          whatsapp: extracted.whatsapp || f.whatsapp,
+          email: extracted.email || f.email,
           current_salary: extracted.current_salary
             ? parseInt(extracted.current_salary).toLocaleString('id-ID')
             : f.current_salary,
@@ -181,20 +181,20 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
     setLoading(true)
     setError(null)
 
-    const currentSalaryNum  = form.current_salary  ? parseInt(parseIDR(form.current_salary))  : null
+    const currentSalaryNum = form.current_salary ? parseInt(parseIDR(form.current_salary)) : null
     const expectedSalaryNum = form.expected_salary ? parseInt(parseIDR(form.expected_salary)) : null
 
     // 1. Create candidate
     const { data: candidate, error: candError } = await supabase
       .from('candidates')
       .insert({
-        full_name:       form.full_name,
-        whatsapp:        form.whatsapp,
-        email:           form.email,
-        origin:          form.origin,
-        current_salary:  currentSalaryNum,
+        full_name: form.full_name,
+        whatsapp: form.whatsapp,
+        email: form.email,
+        origin: form.origin,
+        current_salary: currentSalaryNum,
         expected_salary: expectedSalaryNum,
-        cv_link:         cvMode === 'link' && cvLink ? cvLink : null, // backward-compat field
+        cv_link: cvMode === 'link' && cvLink ? cvLink : null, // backward-compat field
       })
       .select()
       .single()
@@ -232,24 +232,24 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
 
         await supabase.from('cv_sources').insert({
           candidate_id: candidateId,
-          source_type:  'upload',
-          file_path:    path,
-          file_name:    cvFile.name,
-          file_size:    cvFile.size,
-          file_type:    cvFile.type,
-          uploaded_by:  user?.id,
-          is_active:    true,
-          parsed_data:  parsedCVData || null,
-          parsed_at:    parsedCVData ? new Date().toISOString() : null,
+          source_type: 'upload',
+          file_path: path,
+          file_name: cvFile.name,
+          file_size: cvFile.size,
+          file_type: cvFile.type,
+          uploaded_by: user?.id,
+          is_active: true,
+          parsed_data: parsedCVData || null,
+          parsed_at: parsedCVData ? new Date().toISOString() : null,
         })
 
       } else if (cvMode === 'link' && cvLink.trim()) {
         await supabase.from('cv_sources').insert({
           candidate_id: candidateId,
-          source_type:  'link',
-          file_url:     cvLink.trim(),
-          uploaded_by:  user?.id,
-          is_active:    true,
+          source_type: 'link',
+          file_url: cvLink.trim(),
+          uploaded_by: user?.id,
+          is_active: true,
         })
       }
     } catch (err) {
@@ -299,7 +299,7 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
               }}>
                 {[
                   { id: 'upload', label: 'Upload File', Icon: Upload },
-                  { id: 'link',   label: 'External Link', Icon: Link2 },
+                  { id: 'link', label: 'External Link', Icon: Link2 },
                 ].map(({ id, label, Icon }) => (
                   <button
                     key={id}
@@ -307,9 +307,9 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
                     onClick={() => { setCvMode(id); setCvFile(null); setCvLink(''); setScanned(false); setScanning(false); setParsedCVData(null); setError(null) }}
                     style={{
                       flex: 1, padding: '7px 0', border: 'none', cursor: 'pointer',
-                      background:   cvMode === id ? 'white' : 'var(--sand)',
+                      background: cvMode === id ? 'white' : 'var(--sand)',
                       borderBottom: cvMode === id ? '2px solid var(--teal)' : '2px solid var(--sand-dark)',
-                      color:        cvMode === id ? 'var(--teal)' : 'var(--stone)',
+                      color: cvMode === id ? 'var(--teal)' : 'var(--stone)',
                       fontSize: 11.5, fontWeight: 500,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                     }}
@@ -449,7 +449,7 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
                 className="form-control"
               >
                 <option>Lombok Local</option>
-                <option>Indonesian Expat</option>
+                <option>Indonesian (Non-Lombok)</option>
                 <option>International</option>
               </select>
             </div>
