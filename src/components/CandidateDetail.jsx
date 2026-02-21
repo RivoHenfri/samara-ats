@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { X, Send, Pencil, Check, ChevronDown, ExternalLink } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { X, Send, Pencil, Check } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
+import CVSourcePanel from './CVSourcePanel'
 import ScreeningQuestions from './ScreeningQuestions'
 
 const STAGES  = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
@@ -29,6 +31,7 @@ function displayIDR(num) {
 }
 
 export default function CandidateDetail({ app, onClose, onUpdated }) {
+  const { isManager } = useAuth()
   const [notes,       setNotes]       = useState([])
   const [newNote,     setNewNote]     = useState('')
   const [saving,      setSaving]      = useState(false)
@@ -47,7 +50,6 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       ? parseInt(app.candidates.current_salary).toLocaleString('id-ID') : '',
     expected_salary: app?.candidates?.expected_salary
       ? parseInt(app.candidates.expected_salary).toLocaleString('id-ID') : '',
-    cv_link:         app?.candidates?.cv_link || '',
   })
 
   useEffect(() => {
@@ -95,7 +97,6 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
         origin:          editData.origin,
         current_salary:  editData.current_salary ? parseInt(parseIDR(editData.current_salary)) : null,
         expected_salary: editData.expected_salary ? parseInt(parseIDR(editData.expected_salary)) : null,
-        cv_link:         editData.cv_link || null,
       }).eq('id', app.candidates?.id)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 2000)
@@ -109,14 +110,9 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
 
   if (!app) return null
 
-  const candidate   = app.candidates
-  const role        = app.roles
-  const selectedRole = roles.find(r => r.id === editData.role_id)
-  const cvLinkLabel  = candidate?.full_name && (selectedRole || role)
-    ? `${candidate.full_name} – ${(selectedRole || role)?.title}`
-    : 'CV Link'
-
-  const isLombok = candidate?.origin === 'Lombok Local'
+  const candidate = app.candidates
+  const role      = app.roles
+  const isLombok  = candidate?.origin === 'Lombok Local'
 
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -238,19 +234,6 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
                 />
               </div>
             </div>
-            {/* CV Link */}
-            <div className="form-group">
-              <label className="form-label">CV Link</label>
-              <input
-                value={editData.cv_link}
-                onChange={e => setEditData(d => ({ ...d, cv_link: e.target.value }))}
-                className="form-control"
-                placeholder="https://drive.google.com/…"
-              />
-              {editData.cv_link && (
-                <p className="form-hint">Label: <strong>{cvLinkLabel}</strong></p>
-              )}
-            </div>
             {/* Save */}
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={saveEdit} disabled={savingEdit} className="btn btn-primary btn-sm">
@@ -273,22 +256,19 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
             <InfoRow label="Applied"  value={format(new Date(app.created_at), 'dd MMM yyyy')} />
             <InfoRow label="Current Salary"  value={displayIDR(candidate?.current_salary)} />
             <InfoRow label="Expected Salary" value={displayIDR(candidate?.expected_salary)} />
-            {candidate?.cv_link && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <p className="form-label" style={{ marginBottom: 4 }}>CV</p>
-                <a
-                  href={candidate.cv_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--teal)', fontSize: 12.5 }}
-                >
-                  <ExternalLink size={12} />
-                  {cvLinkLabel}
-                </a>
-              </div>
-            )}
           </div>
         )}
+
+        {/* ── CV Source ── */}
+        <div style={{ padding: '14px 22px', borderBottom: '1px solid var(--sand-dark)' }}>
+          <p style={{
+            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.16em',
+            textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 10,
+          }}>
+            CV
+          </p>
+          <CVSourcePanel candidateId={candidate?.id} canEdit={isManager} />
+        </div>
 
         {/* ── Tabs ── */}
         <div style={{
