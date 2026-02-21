@@ -7,8 +7,6 @@ import {
   Clock, Loader2, CheckCircle, X, Sparkles, ExternalLink,
 } from 'lucide-react'
 
-const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY
-
 const ALLOWED_TYPES = {
   'application/pdf': 'PDF',
   'application/msword': 'DOC',
@@ -18,18 +16,11 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 // ── AI: full CV parse ─────────────────────────────────────────────────────────
 async function parseCVWithClaude(base64Data, mimeType) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'pdfs-2024-09-25',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
+      beta: 'pdfs-2024-09-25',
       messages: [{
         role: 'user',
         content: [
@@ -63,12 +54,12 @@ async function parseCVWithClaude(base64Data, mimeType) {
           },
         ],
       }],
-    }),
+    },
   })
 
-  const data = await response.json()
-  if (data.error) throw new Error(data.error.message || 'Claude API error')
-  const text = data.content?.[0]?.text
+  if (error) throw new Error(error.message || 'Claude proxy error')
+  if (data?.error) throw new Error(data.error.message || 'Claude API error')
+  const text = data?.content?.[0]?.text
   if (!text) throw new Error('No response from Claude')
   return JSON.parse(text.replace(/```json|```/g, '').trim())
 }
@@ -209,7 +200,7 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
       // AI parse (PDF only, non-fatal if it fails)
       let parsedData = null
       let parsedAt   = null
-      if (pendingFile.type === 'application/pdf' && ANTHROPIC_KEY) {
+      if (pendingFile.type === 'application/pdf') {
         setParsing(true)
         try {
           const base64 = await fileToBase64(pendingFile)
@@ -307,7 +298,7 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
 
   // ── Re-parse existing upload with AI ───────────────────────────────────────
   const handleParseWithAI = async (source) => {
-    if (source.source_type !== 'upload' || !ANTHROPIC_KEY) return
+    if (source.source_type !== 'upload') return
     setParsing(true)
     setError(null)
     try {
@@ -536,7 +527,7 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
           )}
 
           {/* Parse with AI button (uploaded but not yet parsed) */}
-          {activeSource.source_type === 'upload' && !activeSource.parsed_data && canEdit && ANTHROPIC_KEY && (
+          {activeSource.source_type === 'upload' && !activeSource.parsed_data && canEdit && (
             <div style={{ padding: '8px 14px', borderTop: '1px solid var(--sand-dark)' }}>
               <button
                 onClick={() => handleParseWithAI(activeSource)}
