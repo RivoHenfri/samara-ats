@@ -85,6 +85,20 @@ export default function KanbanBoard() {
     fetchApplications()
   }, [fetchApplications])
 
+  // ── Real-time subscription ──────────────────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('kanban-applications')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'applications' },
+        () => { fetchApplications() }
+      )
+      .subscribe()
+
+    return () => { channel.unsubscribe() }
+  }, [fetchApplications])
+
   const updateFilters = (key, values) => {
     const nextParams = new URLSearchParams(searchParams)
     if (values && values.length > 0) {

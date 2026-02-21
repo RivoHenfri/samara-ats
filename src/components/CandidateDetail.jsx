@@ -58,6 +58,37 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
     if (app) { fetchNotes(); fetchRoles(); fetchLatestScore() }
   }, [app])
 
+  // ── Real-time subscriptions ─────────────────────────────────────
+  useEffect(() => {
+    if (!app) return
+
+    // 1. Keep notes live for all collaborators viewing the same candidate
+    const notesChannel = supabase
+      .channel(`notes-${app.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notes', filter: `application_id=eq.${app.id}` },
+        () => { fetchNotes() }
+      )
+      .subscribe()
+
+    // 2. Notify parent when someone updates this application remotely
+    const appChannel = supabase
+      .channel(`application-detail-${app.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'applications', filter: `id=eq.${app.id}` },
+        () => { onUpdated?.() }
+      )
+      .subscribe()
+
+    return () => {
+      notesChannel.unsubscribe()
+      appChannel.unsubscribe()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app?.id])
+
   const fetchLatestScore = async () => {
     const { data } = await supabase
       .from('application_scores')
