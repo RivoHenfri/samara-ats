@@ -4,36 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie, Legend
 } from 'recharts'
-
-const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
-
-// Samara brand colours for stages
-const STAGE_COLORS = {
-  New: '#9A8F80',  // stone
-  Screening: '#B8965A',  // gold
-  'Interview Pending': '#4A7C74',
-  'Interview Scheduled': '#4A7C74',
-  'Interview Completed': '#4A7C74',  // teal
-  Offer: '#6A9C94',  // teal-light
-  Hired: '#2A5C54',  // teal-dark
-  Rejected: '#C0614A',  // alert
-}
-
-// Division colours
-const DEPT_COLORS = ['#B8965A', '#4A7C74', '#9A8F80']
-
-// Recharts tooltip style (shared)
-const tooltipStyle = {
-  contentStyle: {
-    background: '#2C2A27',
-    border: 'none',
-    borderRadius: 8,
-    fontSize: 12,
-    color: '#F0EBE0',
-  },
-  labelStyle: { color: '#C5BCB0' },
-  itemStyle: { color: '#F0EBE0' },
-}
+import { STAGES, STAGE_COLORS, DEPT_COLORS, TOOLTIP_STYLE as tooltipStyle } from '../lib/constants'
 
 export default function Analytics() {
   const [applications, setApplications] = useState([])
