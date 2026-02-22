@@ -23,7 +23,7 @@ function MainWorkspace() {
   if (!user) return <LoginPage />
 
   const pages = {
-    dashboard: <Dashboard />,
+    dashboard: <Dashboard setCurrentPage={setCurrentPage} />,
     pipeline: <KanbanBoard />,
     candidates: <CandidatesList />,
     roles: <RolesManager />,
@@ -37,7 +37,7 @@ function MainWorkspace() {
 
   return (
     <Layout currentPage={currentPage} setCurrentPage={setCurrentPage}>
-      {pages[currentPage] || <Dashboard />}
+      {pages[currentPage] || <Dashboard setCurrentPage={setCurrentPage} />}
     </Layout>
   )
 }
