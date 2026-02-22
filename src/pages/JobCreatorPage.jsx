@@ -142,11 +142,17 @@ export default function JobCreatorPage() {
             const fmt = await formatJobDescription(jd, form.title, form.department)
             setFormatted(fmt)
 
-            // Step 3: Localize if Indonesian
+            // Step 3: Localize if Indonesian (non-blocking — failure here won't kill the pipeline)
             if (needsBahasa) {
                 setGenStep('Translating to Bahasa Indonesia…')
-                const bahasa = await localizeJobDescription(jd, fmt)
-                setBahasaData(bahasa)
+                try {
+                    const bahasa = await localizeJobDescription(jd, fmt)
+                    setBahasaData(bahasa)
+                } catch (locErr) {
+                    console.warn('Localization failed:', locErr.message)
+                    setError('Bahasa translation failed — you can still proceed. Try regenerating translation later.')
+                    setBahasaData(null)
+                }
             }
 
             // Step 4: Extract scoring criteria

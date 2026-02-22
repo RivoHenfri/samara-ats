@@ -48,7 +48,7 @@ TONE:
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
 function buildPrompt({ title, department, jobContext, location, workArrangement }) {
-    return `Generate a complete, structured job description for the following role at Samara.
+  return `Generate a complete, structured job description for the following role at Samara.
 
 ROLE INPUT:
   Title:            ${title}
@@ -98,34 +98,40 @@ Return this exact JSON structure:
  * @returns {Promise<object>}  Structured JD object
  */
 export async function generateJobDescription(input) {
-    const { data, error } = await supabase.functions.invoke('claude-proxy', {
-        body: {
-            model: MODEL_VERSION,
-            max_tokens: 2000,
-            system: SYSTEM_PROMPT,
-            messages: [{ role: 'user', content: buildPrompt(input) }],
-        },
-    })
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
+      model: MODEL_VERSION,
+      max_tokens: 2000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildPrompt(input) }],
+    },
+  })
 
-    if (error) throw new Error(error.message || 'Claude proxy error')
-    if (data?.error) throw new Error(data.error.message || 'Claude API error')
-    if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
+  if (error) throw new Error(error.message || 'Claude proxy error')
+  if (data?.error) throw new Error(data.error.message || 'Claude API error')
+  if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
 
-    const raw = data.content[0].text.trim().replace(/^```json\n?|```$/g, '').trim()
-    let parsed
-    try {
-        parsed = JSON.parse(raw)
-    } catch {
-        throw new Error('Could not parse JD response. Try regenerating.')
+  let raw = data.content[0].text.trim()
+  // Strip markdown fences
+  raw = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+  // Extract outermost JSON object
+  const jsonMatch = raw.match(/\{[\s\S]*\}/)
+  if (jsonMatch) raw = jsonMatch[0]
+
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Could not parse JD response. Try regenerating.')
+  }
+
+  // Validate required fields
+  const requiredKeys = ['role_summary', 'key_responsibilities', 'required_qualifications', 'required_skills']
+  for (const key of requiredKeys) {
+    if (!parsed[key]) {
+      throw new Error(`Generated JD is missing "${key}". Try regenerating.`)
     }
+  }
 
-    // Validate required fields
-    const requiredKeys = ['role_summary', 'key_responsibilities', 'required_qualifications', 'required_skills']
-    for (const key of requiredKeys) {
-        if (!parsed[key]) {
-            throw new Error(`Generated JD is missing "${key}". Try regenerating.`)
-        }
-    }
-
-    return parsed
+  return parsed
 }

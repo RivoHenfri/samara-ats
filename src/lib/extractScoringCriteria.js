@@ -16,7 +16,7 @@ export const PROMPT_VERSION = 'v1'
 export const MODEL_VERSION = 'claude-sonnet-4-6'
 
 function buildPrompt(structuredJD, jobContext) {
-    return `You are a recruitment scoring architect. Analyze the following job description and extract structured scoring criteria.
+  return `You are a recruitment scoring architect. Analyze the following job description and extract structured scoring criteria.
 
 STRUCTURED JD:
 ${JSON.stringify(structuredJD, null, 2)}
@@ -76,35 +76,41 @@ Return ONLY a valid JSON object — no markdown fences, no explanation:
  * @returns {Promise<object>}    { must_have_criteria, nice_to_have_criteria, default_weights }
  */
 export async function extractScoringCriteria(structuredJD, jobContext) {
-    const { data, error } = await supabase.functions.invoke('claude-proxy', {
-        body: {
-            model: MODEL_VERSION,
-            max_tokens: 2000,
-            messages: [{ role: 'user', content: buildPrompt(structuredJD, jobContext) }],
-        },
-    })
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
+      model: MODEL_VERSION,
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: buildPrompt(structuredJD, jobContext) }],
+    },
+  })
 
-    if (error) throw new Error(error.message || 'Claude proxy error')
-    if (data?.error) throw new Error(data.error.message || 'Claude API error')
-    if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
+  if (error) throw new Error(error.message || 'Claude proxy error')
+  if (data?.error) throw new Error(data.error.message || 'Claude API error')
+  if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
 
-    const raw = data.content[0].text.trim().replace(/^```json\n?|```$/g, '').trim()
-    let parsed
-    try {
-        parsed = JSON.parse(raw)
-    } catch {
-        throw new Error('Could not parse scoring criteria response. Try regenerating.')
-    }
+  let raw = data.content[0].text.trim()
+  // Strip markdown fences
+  raw = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+  // Extract outermost JSON object
+  const jsonMatch = raw.match(/\{[\s\S]*\}/)
+  if (jsonMatch) raw = jsonMatch[0]
 
-    // Validate structure
-    if (!Array.isArray(parsed.must_have_criteria) || !Array.isArray(parsed.nice_to_have_criteria)) {
-        throw new Error('Scoring criteria missing must_have or nice_to_have arrays.')
-    }
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Could not parse scoring criteria response. Try regenerating.')
+  }
 
-    // Ensure default_weights exist
-    if (!parsed.default_weights) {
-        parsed.default_weights = { must_have: 0.55, nice_to_have: 0.25, salary_alignment: 0.20 }
-    }
+  // Validate structure
+  if (!Array.isArray(parsed.must_have_criteria) || !Array.isArray(parsed.nice_to_have_criteria)) {
+    throw new Error('Scoring criteria missing must_have or nice_to_have arrays.')
+  }
 
-    return parsed
+  // Ensure default_weights exist
+  if (!parsed.default_weights) {
+    parsed.default_weights = { must_have: 0.55, nice_to_have: 0.25, salary_alignment: 0.20 }
+  }
+
+  return parsed
 }

@@ -70,7 +70,7 @@ export async function localizeJobDescription(structuredJD, formattedVersions) {
     const { data, error } = await supabase.functions.invoke('claude-proxy', {
         body: {
             model: MODEL_VERSION,
-            max_tokens: 4000,
+            max_tokens: 8000,
             messages: [{ role: 'user', content: buildPrompt(structuredJD, formattedVersions) }],
         },
     })
@@ -79,7 +79,13 @@ export async function localizeJobDescription(structuredJD, formattedVersions) {
     if (data?.error) throw new Error(data.error.message || 'Claude API error')
     if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
 
-    const raw = data.content[0].text.trim().replace(/^```json\n?|```$/g, '').trim()
+    let raw = data.content[0].text.trim()
+    // Strip markdown fences (various patterns)
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+    // Try to extract the outermost JSON object if there's extra text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (jsonMatch) raw = jsonMatch[0]
+
     let parsed
     try {
         parsed = JSON.parse(raw)

@@ -81,7 +81,7 @@ export async function formatJobDescription(structuredJD, roleTitle, department) 
     const { data, error } = await supabase.functions.invoke('claude-proxy', {
         body: {
             model: MODEL_VERSION,
-            max_tokens: 3000,
+            max_tokens: 4000,
             messages: [{ role: 'user', content: buildPrompt(structuredJD, roleTitle, department) }],
         },
     })
@@ -90,7 +90,13 @@ export async function formatJobDescription(structuredJD, roleTitle, department) 
     if (data?.error) throw new Error(data.error.message || 'Claude API error')
     if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
 
-    const raw = data.content[0].text.trim().replace(/^```json\n?|```$/g, '').trim()
+    let raw = data.content[0].text.trim()
+    // Strip markdown fences
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+    // Extract outermost JSON object
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (jsonMatch) raw = jsonMatch[0]
+
     let parsed
     try {
         parsed = JSON.parse(raw)
