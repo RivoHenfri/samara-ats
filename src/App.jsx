@@ -13,6 +13,7 @@ import Import from './components/Import'
 import UsersPage from './pages/UsersPage'
 import IntegrationsManager from './pages/IntegrationsManager'
 import CandidateSchedulingPortal from './pages/CandidateSchedulingPortal'
+import OAuthCallback from './pages/OAuthCallback'
 
 function MainWorkspace() {
   const { user } = useAuth()
@@ -51,6 +52,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/schedule/:interview_id" element={<CandidateSchedulingPortal />} />
+      <Route path="/auth/:provider/callback" element={<OAuthCallback />} />
       <Route path="/*" element={<MainWorkspace />} />
     </Routes>
   )
