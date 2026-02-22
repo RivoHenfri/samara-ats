@@ -12,7 +12,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 // ── AI: full CV extraction ────────────────────────────────────────────────────
 // Returns structured data used to: (a) auto-fill the form, (b) store in parsed_data
-async function extractCVWithClaude(base64PDF, retries = 3) {
+async function extractCVWithClaude(base64PDF, retries = 4) {
   for (let attempt = 0; attempt < retries; attempt++) {
     const { data, error } = await supabase.functions.invoke('claude-proxy', {
       body: {
@@ -66,11 +66,11 @@ async function extractCVWithClaude(base64PDF, retries = 3) {
 
     if (isRateLimit && error) {
       if (attempt < retries - 1) {
-        const delay = Math.pow(2, attempt + 1) * 1000 // 2s, 4s, 8s
-        await new Promise(r => setTimeout(r, delay))
+        const delays = [5000, 15000, 30000, 45000] // 5s, 15s, 30s, 45s
+        await new Promise(r => setTimeout(r, delays[attempt] || 30000))
         continue
       }
-      throw new Error('AI rate limit reached. Please wait 30 seconds and try again.')
+      throw new Error('AI rate limit reached. Please wait a minute and try again.')
     }
 
     if (error) throw new Error(error.message || 'Claude proxy error')
