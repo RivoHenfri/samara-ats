@@ -12,22 +12,23 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 // ── AI: full CV extraction ────────────────────────────────────────────────────
 // Returns structured data used to: (a) auto-fill the form, (b) store in parsed_data
-async function extractCVWithClaude(base64PDF) {
-  const { data, error } = await supabase.functions.invoke('claude-proxy', {
-    body: {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      beta: 'pdfs-2024-09-25',
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: base64PDF },
-          },
-          {
-            type: 'text',
-            text: `Analyze this CV/resume. Return ONLY a valid JSON object — no explanation, no markdown:
+async function extractCVWithClaude(base64PDF, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const { data, error } = await supabase.functions.invoke('claude-proxy', {
+      body: {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        beta: 'pdfs-2024-09-25',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64PDF },
+            },
+            {
+              type: 'text',
+              text: `Analyze this CV/resume. Return ONLY a valid JSON object — no explanation, no markdown:
 {
   "full_name": "string or empty",
   "whatsapp": "phone digits only or empty",
@@ -48,15 +49,34 @@ async function extractCVWithClaude(base64PDF) {
   "average_tenure_months": null or number,
   "flags": ["risk signal strings — e.g. 'Frequent job changes (avg < 12 months)', 'Employment gap > 3 months'"]
 }`,
-          },
-        ],
-      }],
-    },
-  })
-  if (error) throw new Error(error.message || 'Claude proxy error')
-  if (data?.error) throw new Error(data.error.message || 'API error')
-  if (!data?.content?.[0]?.text) throw new Error('No response from Claude')
-  return JSON.parse(data.content[0].text.replace(/```json|```/g, '').trim())
+            },
+          ],
+        }],
+      },
+    })
+
+    // Rate limit — retry with exponential backoff
+    if (error?.message?.includes('429') || error?.message?.includes('Too Many') ||
+      data?.error?.type === 'rate_limit_error') {
+      if (attempt < retries - 1) {
+        const delay = Math.pow(2, attempt + 1) * 1000 // 2s, 4s, 8s
+        await new Promise(r => setTimeout(r, delay))
+        continue
+      }
+      throw new Error('AI rate limit reached. Please wait a moment and try again.')
+    }
+
+    if (error) throw new Error(error.message || 'Claude proxy error')
+    if (data?.error) throw new Error(data.error.message || 'API error')
+    if (!data?.content?.[0]?.text) throw new Error('No response from Claude')
+
+    let raw = data.content[0].text.trim()
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (jsonMatch) raw = jsonMatch[0]
+
+    return JSON.parse(raw)
+  }
 }
 
 // ── IDR formatting ────────────────────────────────────────────────────────────
@@ -154,7 +174,9 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
         }))
         setScanned(true)
       } catch (err) {
-        setError('CV scan failed: ' + (err.message || 'fill in the form manually.'))
+        setError('CV scan failed: ' + (err.message || 'Fill in the form manually.'))
+        // On rate-limit, the form is still usable — just fill it manually
+        setScanned(false)
       }
       setScanning(false)
     }
