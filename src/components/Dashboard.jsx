@@ -6,19 +6,21 @@ const DEPTS = ['All', 'Hospitality', 'Operations', 'Construction']
 
 // Stage → CSS class
 const stageClass = {
-  New:       'stage-new',
+  New: 'stage-new',
   Screening: 'stage-screening',
-  Interview: 'stage-interview',
-  Offer:     'stage-offer',
-  Hired:     'stage-hired',
-  Rejected:  'stage-rejected',
+  'Interview Pending': 'stage-interview',
+  'Interview Scheduled': 'stage-interview',
+  'Interview Completed': 'stage-interview',
+  Offer: 'stage-offer',
+  Hired: 'stage-hired',
+  Rejected: 'stage-rejected',
 }
 
 export default function Dashboard() {
   const [allApplications, setAllApplications] = useState([])
-  const [allCandidates,   setAllCandidates]   = useState([])
-  const [allRoles,        setAllRoles]        = useState([])
-  const [dept,    setDept]    = useState('All')
+  const [allCandidates, setAllCandidates] = useState([])
+  const [allRoles, setAllRoles] = useState([])
+  const [dept, setDept] = useState('All')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchAll() }, [])
@@ -64,10 +66,10 @@ export default function Dashboard() {
 
   // ── Stat cards config ──────────────────────────────────────
   const stats = [
-    { label: 'Total Candidates', value: totalCandidates, accent: 'stat-gold',  icon: <Users size={40} /> },
-    { label: 'Open Roles',       value: openRoles,       accent: 'stat-teal',  icon: <Briefcase size={40} /> },
-    { label: '48h+ Stagnant',   value: stagnant,        accent: 'stat-alert', icon: <AlertTriangle size={40} />, alert: stagnant > 0 },
-    { label: 'Hired',            value: hired,           accent: 'stat-stone', icon: <TrendingUp size={40} /> },
+    { label: 'Total Candidates', value: totalCandidates, accent: 'stat-gold', icon: <Users size={40} /> },
+    { label: 'Open Roles', value: openRoles, accent: 'stat-teal', icon: <Briefcase size={40} /> },
+    { label: '48h+ Stagnant', value: stagnant, accent: 'stat-alert', icon: <AlertTriangle size={40} />, alert: stagnant > 0 },
+    { label: 'Hired', value: hired, accent: 'stat-stone', icon: <TrendingUp size={40} /> },
   ]
 
   if (loading) return (
@@ -158,10 +160,9 @@ export default function Dashboard() {
                     <td style={{ fontWeight: 600 }}>{app.candidates?.full_name}</td>
                     <td>{app.roles?.title}</td>
                     <td>
-                      <span className={`tag ${
-                        app.roles?.department === 'Hospitality' ? 'tag-hosp' :
-                        app.roles?.department === 'Operations'  ? 'tag-ops'  : 'tag-const'
-                      }`}>
+                      <span className={`tag ${app.roles?.department === 'Hospitality' ? 'tag-hosp' :
+                          app.roles?.department === 'Operations' ? 'tag-ops' : 'tag-const'
+                        }`}>
                         {app.roles?.department}
                       </span>
                     </td>

@@ -5,16 +5,18 @@ import {
   Cell, PieChart, Pie, Legend
 } from 'recharts'
 
-const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
 
 // Samara brand colours for stages
 const STAGE_COLORS = {
-  New:       '#9A8F80',  // stone
+  New: '#9A8F80',  // stone
   Screening: '#B8965A',  // gold
-  Interview: '#4A7C74',  // teal
-  Offer:     '#6A9C94',  // teal-light
-  Hired:     '#2A5C54',  // teal-dark
-  Rejected:  '#C0614A',  // alert
+  'Interview Pending': '#4A7C74',
+  'Interview Scheduled': '#4A7C74',
+  'Interview Completed': '#4A7C74',  // teal
+  Offer: '#6A9C94',  // teal-light
+  Hired: '#2A5C54',  // teal-dark
+  Rejected: '#C0614A',  // alert
 }
 
 // Division colours
@@ -30,12 +32,12 @@ const tooltipStyle = {
     color: '#F0EBE0',
   },
   labelStyle: { color: '#C5BCB0' },
-  itemStyle:  { color: '#F0EBE0' },
+  itemStyle: { color: '#F0EBE0' },
 }
 
 export default function Analytics() {
   const [applications, setApplications] = useState([])
-  const [loading,      setLoading]      = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchData() }, [])
 
@@ -49,18 +51,18 @@ export default function Analytics() {
 
   // Pipeline funnel
   const funnelData = STAGES.map(stage => ({
-    name:  stage,
+    name: stage,
     value: applications.filter(a => a.stage === stage).length,
-    fill:  STAGE_COLORS[stage],
+    fill: STAGE_COLORS[stage],
   }))
 
   // Conversion rates
   const conversionData = []
   for (let i = 0; i < STAGES.length - 1; i++) {
     const from = STAGES[i]
-    const to   = STAGES[i + 1]
+    const to = STAGES[i + 1]
     const fromCount = applications.filter(a => a.stage === from).length
-    const toCount   = applications.filter(a => a.stage === to).length
+    const toCount = applications.filter(a => a.stage === to).length
     const total = fromCount + toCount
     conversionData.push({
       name: `${from} → ${to}`,
@@ -74,11 +76,11 @@ export default function Analytics() {
   )
   const avgDays = hiredApps.length > 0
     ? Math.round(
-        hiredApps.reduce((sum, a) => {
-          const days = (new Date(a.updated_at) - new Date(a.created_at)) / (1000 * 60 * 60 * 24)
-          return sum + days
-        }, 0) / hiredApps.length
-      )
+      hiredApps.reduce((sum, a) => {
+        const days = (new Date(a.updated_at) - new Date(a.created_at)) / (1000 * 60 * 60 * 24)
+        return sum + days
+      }, 0) / hiredApps.length
+    )
     : null
 
   // Department breakdown

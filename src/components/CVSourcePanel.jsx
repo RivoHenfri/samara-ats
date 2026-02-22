@@ -132,7 +132,10 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
   const [error,           setError]           = useState(null)
   const [showHistory,     setShowHistory]     = useState(false)
   const [showParsed,      setShowParsed]      = useState(false)
-  const fileRef = useRef()
+  const fileRef            = useRef()
+  // Track which source IDs we've already attempted auto-parse for (prevents
+  // repeated triggers across re-renders while parsing is in progress)
+  const autoParseAttempted = useRef(new Set())
 
   const activeSource   = sources.find(s => s.is_active) ?? sources[0] ?? null
   const historyEntries = sources.filter(s => s.id !== activeSource?.id)
@@ -140,6 +143,20 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
   useEffect(() => {
     if (candidateId) fetchSources()
   }, [candidateId])
+
+  // ── Auto-parse: trigger immediately when an uploaded CV has no parsed data ──
+  // Runs once per unique source ID to avoid re-triggering during parse state changes.
+  useEffect(() => {
+    if (!activeSource) return
+    if (activeSource.source_type !== 'upload') return
+    if (activeSource.parsed_data) return          // already parsed
+    if (!canEdit) return                           // read-only viewers skip
+    if (autoParseAttempted.current.has(activeSource.id)) return
+
+    autoParseAttempted.current.add(activeSource.id)
+    handleParseWithAI(activeSource)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSource?.id, activeSource?.parsed_data])
 
   const fetchSources = async () => {
     setLoading(true)
@@ -526,19 +543,29 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
             </>
           )}
 
-          {/* Parse with AI button (uploaded but not yet parsed) */}
-          {activeSource.source_type === 'upload' && !activeSource.parsed_data && canEdit && (
-            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--sand-dark)' }}>
+          {/* Auto-parsing indicator (uploaded but not yet parsed) */}
+          {activeSource.source_type === 'upload' && !activeSource.parsed_data && (
+            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--sand-dark)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Loader2 size={11} style={{ color: 'var(--teal)', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: 'var(--stone)' }}>
+                {parsing ? 'Parsing CV with AI…' : 'Queued for AI parsing…'}
+              </span>
+            </div>
+          )}
+
+          {/* Re-parse button (already parsed, canEdit = optional re-run) */}
+          {activeSource.source_type === 'upload' && activeSource.parsed_data && canEdit && (
+            <div style={{ padding: '6px 14px', borderTop: '1px solid var(--sand-dark)' }}>
               <button
                 onClick={() => handleParseWithAI(activeSource)}
                 disabled={parsing}
                 className="btn btn-ghost btn-sm"
-                style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
+                style={{ fontSize: 10.5, display: 'flex', alignItems: 'center', gap: 5, color: 'var(--stone)' }}
               >
                 {parsing
-                  ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
-                  : <Sparkles size={11} />}
-                {parsing ? 'Parsing with AI…' : 'Parse with AI'}
+                  ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />
+                  : <Sparkles size={10} />}
+                {parsing ? 'Re-parsing…' : 'Re-parse CV'}
               </button>
             </div>
           )}

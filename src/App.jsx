@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
 import Layout from './components/Layout'
@@ -10,16 +11,12 @@ import RolesManager from './components/RolesManager'
 import Analytics from './components/Analytics'
 import Import from './components/Import'
 import UsersPage from './pages/UsersPage'
+import IntegrationsManager from './pages/IntegrationsManager'
+import CandidateSchedulingPortal from './pages/CandidateSchedulingPortal'
 
-export default function App() {
-  const { user, loading } = useAuth()
+function MainWorkspace() {
+  const { user } = useAuth()
   const [currentPage, setCurrentPage] = useState('dashboard')
-
-  if (loading) return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <p className="text-gray-400">Loading...</p>
-    </div>
-  )
 
   if (!user) return <LoginPage />
 
@@ -32,11 +29,29 @@ export default function App() {
     analytics: <Analytics />,
     import: <Import />,
     users: <UsersPage />,
+    integrations: <IntegrationsManager />,
   }
 
   return (
     <Layout currentPage={currentPage} setCurrentPage={setCurrentPage}>
-      {pages[currentPage]}
+      {pages[currentPage] || <Dashboard />}
     </Layout>
+  )
+}
+
+export default function App() {
+  const { loading } = useAuth()
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <p className="text-gray-400">Loading...</p>
+    </div>
+  )
+
+  return (
+    <Routes>
+      <Route path="/schedule/:interview_id" element={<CandidateSchedulingPortal />} />
+      <Route path="/*" element={<MainWorkspace />} />
+    </Routes>
   )
 }

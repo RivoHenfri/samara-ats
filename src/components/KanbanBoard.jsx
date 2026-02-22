@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { autoScore, autoGenerateQuestions } from '../lib/aiWorkflow'
 import CandidateCard, { getWhatsAppMessage } from './CandidateCard'
 import AddCandidateModal from './AddCandidateModal'
 import { Plus, Search, RotateCcw, X } from 'lucide-react'
 import MultiSelectDropdown from './MultiSelectDropdown'
 
-const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
 const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
@@ -14,10 +15,27 @@ const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 const colClass = {
   New: 'k-col-new',
   Screening: 'k-col-screening',
-  Interview: 'k-col-interview',
+  'Interview Pending': 'k-col-interview',
+  'Interview Scheduled': 'k-col-interview',
+  'Interview Completed': 'k-col-interview',
   Offer: 'k-col-offer',
   Hired: 'k-col-hired',
   Rejected: 'k-col-rejected',
+}
+
+// ── Stagnation config ──────────────────────────────────────────────────────
+// Threshold: candidates inactive longer than this get a proactive alert.
+const STAGNATION_DAYS = 5
+const STAGNATION_HOURS = STAGNATION_DAYS * 24
+
+// Recommended next action per stage shown inside the alert banner
+const STAGE_NEXT_ACTION = {
+  New: 'Move to Screening — AI will score automatically',
+  Screening: 'Review AI score and schedule an interview',
+  'Interview Pending': 'Generate interview invite and wait for candidate booking',
+  'Interview Scheduled': 'Conduct the interview on Zoom',
+  'Interview Completed': 'Capture interview feedback and move to Offer or Reject',
+  Offer: 'Follow up on offer status — confirm acceptance or close',
 }
 
 export default function KanbanBoard() {
@@ -121,9 +139,18 @@ export default function KanbanBoard() {
 
   const handleDrop = async (stage) => {
     if (!dragging || dragging.stage === stage) return
-    await supabase.from('applications').update({ stage }).eq('id', dragging.id)
+    const prevStage = dragging.stage
+    const appId = dragging.id
+    await supabase.from('applications').update({ stage }).eq('id', appId)
     setDragging(null)
     fetchApplications()
+
+    // ── Auto-trigger AI in background based on destination stage ──
+    if (stage === 'Screening' && prevStage !== 'Screening') {
+      autoScore(appId)          // fire-and-forget; no-ops if already scored
+    } else if (stage === 'Interview Pending' && prevStage !== 'Interview Pending') {
+      autoGenerateQuestions(appId) // fire-and-forget; no-ops if already generated
+    }
   }
 
   const handleSelect = (app, e) => {
@@ -165,12 +192,19 @@ export default function KanbanBoard() {
     fetchApplications()
   }
 
-  // Count stale across all active stages
-  const staleCount = applications.filter(app => {
-    if (['Offer', 'Hired', 'Rejected'].includes(app.stage)) return false
+  // Proactive stagnation detection across all active pipeline stages
+  const staleApps = applications.filter(app => {
+    if (['Hired', 'Rejected'].includes(app.stage)) return false
     const hrs = (Date.now() - new Date(app.updated_at)) / 36e5
-    return hrs > 48
-  }).length
+    return hrs > STAGNATION_HOURS
+  })
+  const staleCount = staleApps.length
+
+  // Group stale counts by stage for per-stage recommended action display
+  const staleByStage = staleApps.reduce((acc, app) => {
+    acc[app.stage] = (acc[app.stage] || 0) + 1
+    return acc
+  }, {})
 
   if (loading) return (
     <div className="loading-state">
@@ -285,18 +319,33 @@ export default function KanbanBoard() {
           </div>
         </div>
 
-        {/* 48h stale alert */}
+        {/* Proactive stagnation alert with recommended next actions */}
         {staleCount > 0 && (
-          <div className="alert-banner">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span>
-              <strong style={{ color: 'var(--alert)' }}>{staleCount} candidate{staleCount > 1 ? 's' : ''}</strong>
-              {' '}not moved in 48+ hours — action required
-            </span>
+          <div className="alert-banner" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>
+                <strong style={{ color: 'var(--alert)' }}>{staleCount} candidate{staleCount !== 1 ? 's' : ''}</strong>
+                {' '}stagnant for {STAGNATION_DAYS}+ days — action required
+              </span>
+            </div>
+            {/* Per-stage recommended next actions */}
+            {Object.entries(staleByStage).map(([stage, count]) =>
+              STAGE_NEXT_ACTION[stage] ? (
+                <div key={stage} style={{ display: 'flex', alignItems: 'baseline', gap: 6, paddingLeft: 22 }}>
+                  <span style={{ fontSize: 11, color: 'var(--alert)', fontWeight: 600, flexShrink: 0 }}>
+                    {count} in {stage}:
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--charcoal)' }}>
+                    {STAGE_NEXT_ACTION[stage]}
+                  </span>
+                </div>
+              ) : null
+            )}
           </div>
         )}
 

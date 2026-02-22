@@ -9,7 +9,7 @@ import {
 } from '../lib/generateCompatibilityScore'
 import {
   Zap, RefreshCw, ChevronDown, ChevronUp,
-  AlertTriangle, Loader2, ShieldAlert, Target, FileText,
+  AlertTriangle, Loader2, ShieldAlert, Target, FileText, Sparkles,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 
@@ -127,6 +127,20 @@ export default function CompatibilityScore({ app, onScored }) {
     fetchParsedCV()
   }, [app.id])
 
+  // ── Real-time: auto-refresh when system inserts a score in background ────────
+  useEffect(() => {
+    const channel = supabase
+      .channel(`scores-auto-${app.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'application_scores', filter: `application_id=eq.${app.id}` },
+        () => { fetchVersions() }
+      )
+      .subscribe()
+    return () => { channel.unsubscribe() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.id])
+
   const fetchVersions = async () => {
     const { data } = await supabase
       .from('application_scores')
@@ -189,13 +203,35 @@ export default function CompatibilityScore({ app, onScored }) {
   const hasJobContext  = !!app.roles?.job_context?.trim()
   const hasCVData      = !!parsedCV
 
+  // When in Screening with no score, auto-scoring is running in background
+  const autoScoringInProgress = versions.length === 0 && app.stage === 'Screening'
+
   // ── Empty state ──────────────────────────────────────────────────────────────
   if (versions.length === 0) {
     return (
       <div style={{ padding: '28px 22px', textAlign: 'center' }}>
 
-        {/* Hints */}
-        {(!hasJobContext || !hasCVData) && (
+        {/* Auto-generating banner (Screening stage) */}
+        {autoScoringInProgress && (
+          <div style={{
+            background: 'rgba(74,124,116,0.08)', border: '1px solid rgba(74,124,116,0.25)',
+            borderRadius: 8, padding: '12px 14px', marginBottom: 20,
+            display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+          }}>
+            <Loader2 size={16} style={{ color: 'var(--teal)', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--teal)', marginBottom: 2 }}>
+                AI is scoring this candidate automatically
+              </p>
+              <p style={{ fontSize: 11.5, color: 'var(--stone)', lineHeight: 1.5 }}>
+                Triggered by Screening stage entry — this page will update when ready.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Hints (only show when not auto-generating) */}
+        {!autoScoringInProgress && (!hasJobContext || !hasCVData) && (
           <div style={{
             background: 'rgba(184,150,90,0.08)', border: '1px solid rgba(184,150,90,0.25)',
             borderRadius: 8, padding: '10px 14px', marginBottom: 16, textAlign: 'left',
@@ -215,20 +251,24 @@ export default function CompatibilityScore({ app, onScored }) {
           </div>
         )}
 
-        <div style={{
-          width: 44, height: 44, background: 'var(--sand)',
-          borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 12px', color: 'var(--stone)',
-        }}>
-          <Zap size={20} />
-        </div>
-        <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
-          No compatibility score yet
-        </p>
-        <p style={{ fontSize: 12, color: 'var(--stone)', marginBottom: 20, lineHeight: 1.6 }}>
-          AI will compare the candidate profile against role requirements<br />
-          and return a scored evaluation with risk flags and recruiter summary.
-        </p>
+        {!autoScoringInProgress && (
+          <>
+            <div style={{
+              width: 44, height: 44, background: 'var(--sand)',
+              borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 12px', color: 'var(--stone)',
+            }}>
+              <Zap size={20} />
+            </div>
+            <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
+              No compatibility score yet
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--stone)', marginBottom: 20, lineHeight: 1.6 }}>
+              Move the candidate to <strong>Screening</strong> to trigger automatic AI scoring,<br />
+              or generate manually below.
+            </p>
+          </>
+        )}
 
         {error && (
           <div style={{
@@ -240,14 +280,15 @@ export default function CompatibilityScore({ app, onScored }) {
           </div>
         )}
 
-        {isManager ? (
-          <button onClick={handleGenerate} disabled={generating} className="btn btn-primary" style={{ margin: '0 auto' }}>
+        {isManager && (
+          <button onClick={handleGenerate} disabled={generating} className="btn btn-ghost btn-sm" style={{ margin: '0 auto' }}>
             {generating
               ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Scoring…</>
-              : <><Zap size={13} /> Generate Score</>
+              : <><Sparkles size={13} /> {autoScoringInProgress ? 'Score Now Instead' : 'Generate Score'}</>
             }
           </button>
-        ) : (
+        )}
+        {!isManager && !autoScoringInProgress && (
           <p style={{ fontSize: 11.5, color: 'var(--stone-light)' }}>
             Manager or Admin access required to generate scores.
           </p>

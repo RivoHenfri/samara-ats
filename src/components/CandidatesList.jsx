@@ -6,14 +6,16 @@ import CandidateDetail from './CandidateDetail'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import { ScoreBadge } from './CompatibilityScore'
 
-const stages = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+const stages = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
 const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
 const stageClass = {
   New: 'stage-new',
   Screening: 'stage-screening',
-  Interview: 'stage-interview',
+  'Interview Pending': 'stage-interview',
+  'Interview Scheduled': 'stage-interview',
+  'Interview Completed': 'stage-interview',
   Offer: 'stage-offer',
   Hired: 'stage-hired',
   Rejected: 'stage-rejected',

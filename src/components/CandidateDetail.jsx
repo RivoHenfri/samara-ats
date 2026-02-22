@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { autoScore, autoGenerateQuestions } from '../lib/aiWorkflow'
 import { X, Send, Pencil, Check } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import CVSourcePanel from './CVSourcePanel'
 import ScreeningQuestions from './ScreeningQuestions'
 import CompatibilityScore from './CompatibilityScore'
+import SchedulePanel from './SchedulePanel'
 
-const STAGES = ['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']
+const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
 const ORIGINS = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
 const stageClass = {
   New: 'stage-new',
   Screening: 'stage-screening',
-  Interview: 'stage-interview',
+  'Interview Pending': 'stage-interview',
+  'Interview Scheduled': 'stage-interview',
+  'Interview Completed': 'stage-interview',
   Offer: 'stage-offer',
   Hired: 'stage-hired',
   Rejected: 'stage-rejected',
@@ -131,10 +135,12 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
   }
 
   const saveEdit = async () => {
+    const prevStage = app.stage
+    const newStage = editData.stage
     setSavingEdit(true)
     try {
       await supabase.from('applications')
-        .update({ stage: editData.stage, role_id: editData.role_id })
+        .update({ stage: newStage, role_id: editData.role_id })
         .eq('id', app.id)
       await supabase.from('candidates').update({
         whatsapp: editData.whatsapp,
@@ -146,6 +152,13 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       setTimeout(() => setSaveSuccess(false), 2000)
       setEditMode(false)
       if (onUpdated) onUpdated()
+
+      // ── Auto-trigger AI on stage transition (fire-and-forget) ──
+      if (newStage === 'Screening' && prevStage !== 'Screening') {
+        autoScore(app.id)
+      } else if (newStage === 'Interview' && prevStage !== 'Interview') {
+        autoGenerateQuestions(app.id)
+      }
     } catch (err) {
       console.error('Save failed:', err)
     }
@@ -323,6 +336,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
             { key: 'notes', label: `Notes (${notes.length})` },
             { key: 'screening', label: 'Screening Questions' },
             { key: 'score', label: latestScore != null ? `AI Score · ${latestScore}` : 'AI Score' },
+            { key: 'schedule', label: 'Scheduler' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -418,6 +432,11 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
         {/* ── AI Score tab ── */}
         {activeTab === 'score' && (
           <CompatibilityScore app={app} onScored={(score) => setLatestScore(score)} />
+        )}
+
+        {/* ── Scheduler tab ── */}
+        {activeTab === 'schedule' && (
+          <SchedulePanel app={app} />
         )}
 
       </div>

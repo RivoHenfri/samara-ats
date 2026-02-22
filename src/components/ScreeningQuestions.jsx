@@ -202,6 +202,20 @@ export default function ScreeningQuestions({ app }) {
 
   useEffect(() => { fetchVersions() }, [app.id])
 
+  // ── Real-time: auto-refresh when system inserts questions in background ───────
+  useEffect(() => {
+    const channel = supabase
+      .channel(`questions-auto-${app.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'screening_questions', filter: `application_id=eq.${app.id}` },
+        () => { fetchVersions() }
+      )
+      .subscribe()
+    return () => { channel.unsubscribe() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.id])
+
   const fetchVersions = async () => {
     const { data } = await supabase
       .from('screening_questions')
@@ -251,13 +265,35 @@ export default function ScreeningQuestions({ app }) {
   const scorecard      = questions?.scorecard || []
   const mustHaveCount  = scorecard.filter(s => s.must_have).length
 
+  // When in Interview with no questions, auto-generation is running in background
+  const autoGenInProgress = versions.length === 0 && app.stage === 'Interview'
+
   // ── Empty state ──────────────────────────────────────────────────────────────
   if (versions.length === 0) {
     return (
       <div style={{ padding: '28px 22px', textAlign: 'center' }}>
 
-        {/* Job context hint */}
-        {!hasJobContext && (
+        {/* Auto-generating banner (Interview stage) */}
+        {autoGenInProgress && (
+          <div style={{
+            background: 'rgba(74,124,116,0.08)', border: '1px solid rgba(74,124,116,0.25)',
+            borderRadius: 8, padding: '12px 14px', marginBottom: 20,
+            display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+          }}>
+            <Loader2 size={16} style={{ color: 'var(--teal)', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--teal)', marginBottom: 2 }}>
+                AI is generating questions automatically
+              </p>
+              <p style={{ fontSize: 11.5, color: 'var(--stone)', lineHeight: 1.5 }}>
+                Triggered by Interview stage entry — this page will update when ready.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Job context hint (only when not auto-generating) */}
+        {!autoGenInProgress && !hasJobContext && (
           <div style={{
             background: 'rgba(184,150,90,0.08)', border: '1px solid rgba(184,150,90,0.25)',
             borderRadius: 8, padding: '10px 14px', marginBottom: 16, textAlign: 'left',
@@ -290,20 +326,24 @@ export default function ScreeningQuestions({ app }) {
           </div>
         )}
 
-        <div style={{
-          width: 44, height: 44, background: 'var(--sand)',
-          borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 12px', color: 'var(--stone)',
-        }}>
-          <Sparkles size={20} />
-        </div>
-        <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
-          No questions generated yet
-        </p>
-        <p style={{ fontSize: 12, color: 'var(--stone)', marginBottom: 20, lineHeight: 1.6 }}>
-          AI will analyse the role requirements and candidate profile<br />
-          to generate targeted questions and a scoring scorecard.
-        </p>
+        {!autoGenInProgress && (
+          <>
+            <div style={{
+              width: 44, height: 44, background: 'var(--sand)',
+              borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 12px', color: 'var(--stone)',
+            }}>
+              <Sparkles size={20} />
+            </div>
+            <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--charcoal)', marginBottom: 6 }}>
+              No questions generated yet
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--stone)', marginBottom: 20, lineHeight: 1.6 }}>
+              Move the candidate to <strong>Interview</strong> to trigger automatic question generation,<br />
+              or generate manually below.
+            </p>
+          </>
+        )}
 
         {error && (
           <div style={{ background: 'var(--alert-bg)', border: '1px solid rgba(192,97,74,0.2)',
@@ -313,14 +353,15 @@ export default function ScreeningQuestions({ app }) {
           </div>
         )}
 
-        {isManager ? (
-          <button onClick={handleGenerate} disabled={generating} className="btn btn-primary" style={{ margin: '0 auto' }}>
+        {isManager && (
+          <button onClick={handleGenerate} disabled={generating} className="btn btn-ghost btn-sm" style={{ margin: '0 auto' }}>
             {generating
               ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</>
-              : <><Sparkles size={13} /> Generate Questions</>
+              : <><Sparkles size={13} /> {autoGenInProgress ? 'Generate Now Instead' : 'Generate Questions'}</>
             }
           </button>
-        ) : (
+        )}
+        {!isManager && !autoGenInProgress && (
           <p style={{ fontSize: 11.5, color: 'var(--stone-light)' }}>
             Manager or Admin access required to generate questions.
           </p>

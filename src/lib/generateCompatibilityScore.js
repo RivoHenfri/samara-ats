@@ -13,7 +13,7 @@
  *   interview_focus        Array  Strings — specific areas to probe
  */
 
-const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY
+import { supabase } from './supabase'
 
 export const PROMPT_VERSION = 'v1'
 export const MODEL_VERSION  = 'claude-sonnet-4-6'
@@ -197,28 +197,17 @@ Rules:
  * @returns {Promise<object>}   Score JSONB object to store in application_scores
  */
 export async function generateCompatibilityScore(app, parsedCV = null) {
-  if (!ANTHROPIC_KEY) {
-    throw new Error('VITE_ANTHROPIC_KEY is not configured. Add it to your .env file.')
-  }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: MODEL_VERSION,
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
+      model:      MODEL_VERSION,
       max_tokens: 1500,
-      messages: [{ role: 'user', content: buildPrompt(app, parsedCV) }],
-    }),
+      messages:   [{ role: 'user', content: buildPrompt(app, parsedCV) }],
+    },
   })
 
-  const data = await response.json()
-  if (data.error) throw new Error(data.error.message || 'Claude API error')
-  if (!data.content?.[0]?.text) throw new Error('Empty response from Claude')
+  if (error) throw new Error(error.message || 'Claude proxy error')
+  if (data?.error) throw new Error(data.error.message || 'Claude API error')
+  if (!data?.content?.[0]?.text) throw new Error('Empty response from Claude')
 
   const raw = data.content[0].text.trim().replace(/^```json\n?|```$/g, '').trim()
   let parsed

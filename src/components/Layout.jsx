@@ -2,21 +2,22 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Briefcase, Calculator,
-  LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog
+  LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon
 } from 'lucide-react'
 
 export default function Layout({ children, currentPage, setCurrentPage }) {
   const [collapsed, setCollapsed] = useState(false)
-  const { user, isAdmin, signOut } = useAuth()
+  const { user, profile, isAdmin, signOut } = useAuth()
 
   const navItems = [
-    { id: 'dashboard',  label: 'Dashboard',       icon: LayoutDashboard, section: 'Overview' },
-    { id: 'pipeline',   label: 'Pipeline',         icon: Users,           section: 'Recruitment' },
-    { id: 'candidates', label: 'Candidates',       icon: Briefcase,       section: null },
-    { id: 'roles',      label: 'Roles',            icon: ClipboardList,   section: null },
-    { id: 'tcow',       label: 'TCOW Calculator',  icon: Calculator,      section: 'Analytics' },
-    { id: 'analytics',  label: 'Analytics',        icon: BarChart2,       section: null },
-    { id: 'import',     label: 'Import',           icon: Upload,          section: 'Tools' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'Overview' },
+    { id: 'pipeline', label: 'Pipeline', icon: Users, section: 'Recruitment' },
+    { id: 'candidates', label: 'Candidates', icon: Briefcase, section: null },
+    { id: 'roles', label: 'Roles', icon: ClipboardList, section: null },
+    { id: 'tcow', label: 'TCOW Calculator', icon: Calculator, section: 'Analytics' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2, section: null },
+    { id: 'import', label: 'Import', icon: Upload, section: 'Tools' },
+    { id: 'integrations', label: 'Integrations', icon: LinkIcon, section: 'Settings' },
     ...(isAdmin ? [{ id: 'users', label: 'User Management', icon: UserCog, section: null }] : []),
   ]
 

@@ -1,0 +1,355 @@
+# Samara-ATS: Strategic Product Review
+
+> **Deep-dive audit from product, technical, and business perspectives.**
+> Based on a full codebase review of all 16 components, 3 pages, AI libs, SQL migrations, and auth infrastructure.
+
+---
+
+## Current State Summary
+
+| Dimension | What You Have | Maturity |
+|---|---|---|
+| **Pipeline** | Kanban board with drag-and-drop, 6 stages, real-time sync | ✅ Solid |
+| **Candidate Management** | List view, detail panel, pagination, bulk select/reject | ✅ Solid |
+| **AI Scoring** | Claude Sonnet compatibility scores (must-have/nice-to-have/salary), risk flags, executive summaries | ✅ Strong differentiator |
+| **AI Screening** | Auto-generated interview questions with scorecard, gap probes, risk probes | ✅ Strong differentiator |
+| **WhatsApp Integration** | Bilingual templates (ID/EN), stage-aware messaging, bulk broadcasting | ✅ Great for Indonesia market |
+| **Import** | Excel/CSV with intelligent column mapping, dedup, progress tracking | ✅ Solid |
+| **Analytics** | Pipeline funnel, conversion rates, time-to-hire, dept breakdown | ⚠️ Basic |
+| **Auth** | Azure SSO, RBAC (Admin/Manager/Recruiter), multi-tenant RLS | ✅ Enterprise-ready foundations |
+| **Audit Trail** | Immutable ledger with triggers, denormalized for fast queries | ✅ Enterprise-grade |
+| **TCOW Calculator** | Total cost of worker calculator | ⚠️ Standalone, not integrated |
+
+---
+
+## 🔴 Critical Gaps & Weaknesses
+
+### 1. API Key Exposed in Frontend
+```
+const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY
+```
+In [generateCompatibilityScore.js](file:///c:/Users/Axioo%20Pongo/OneDrive/Desktop/samara-ats/src/lib/generateCompatibilityScore.js#L16), the Anthropic API key is exposed in the client bundle via `VITE_` prefix. Anyone can inspect network traffic and steal your key. **This is a security vulnerability.**
+
+> [!CAUTION]
+> Your screening questions already use a Supabase Edge Function proxy (`claude-proxy`). Migrate compatibility scoring to use the same proxy immediately. This is a P0 fix.
+
+### 2. No URL-Based Routing
+The app uses `useState('dashboard')` for page switching instead of `react-router-dom` routes — even though `react-router-dom` is already a dependency. This means:
+- No deep linking (can't share a URL to a specific candidate or pipeline view)
+- No browser back/forward navigation
+- No bookmarkable views
+- No SEO (irrelevant for internal tools, but signals immaturity)
+
+### 3. No Scheduled/Background Processing
+All AI scoring and question generation runs synchronously in the browser. There's no:
+- Batch scoring of new candidates
+- Nightly re-scoring when role requirements change
+- Auto-score on import
+- Webhook-triggered workflows
+
+### 4. WhatsApp is Manual Link-Opens, Not API
+The WhatsApp integration opens `wa.me` links in new tabs. This is fragile at scale:
+- Requires manual click per candidate
+- No delivery tracking
+- No read receipts
+- No conversation history in the ATS
+- Breaks above ~20 candidates per session
+
+### 5. No Candidate Deduplication Beyond Import
+Import checks for duplicate applications, but there's no global candidate merge/dedup — candidates applied through different channels will create separate records.
+
+### 6. No Email Communication
+The entire communication layer is WhatsApp-only. There's no:
+- Email templates
+- Automated email sequences
+- Calendar invite generation for interviews
+- Offer letter delivery
+
+---
+
+## 🟡 Product Gaps (High Impact)
+
+### 7. Analytics Are Static Snapshots
+Current analytics recompute from raw data on every page load. Missing:
+- **Time-series trends** (pipeline velocity over weeks/months)
+- **Source effectiveness** (which channels produce best hires?)
+- **Recruiter performance** (applications processed per recruiter)
+- **Role fill rate** by department
+- **Drop-off analysis** (where in the pipeline do candidates fall off?)
+- **Cost-per-hire** (integrate with TCOW)
+
+### 8. No Interview Scheduling
+There's no calendar integration. Recruiters must manually schedule interviews via WhatsApp, then remember to update the stage. This is the **#1 workflow bottleneck** in most ATS systems.
+
+### 9. No Offer Management
+The "Offer" stage exists but there's no:
+- Offer letter generation
+- Approval workflows
+- Counter-offer tracking
+- Offer acceptance/decline flow
+
+### 10. Notes System Is Invisible
+Notes are being written during import, but the `CandidateDetail` panel doesn't surface a timeline/activity feed. Recruiter notes, stage changes, score changes — all should be in a single chronological feed.
+
+### 11. No Configurable Pipeline Stages
+Stages are hardcoded as `['New', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected']`. Enterprise customers will demand custom stages, sub-stages, and parallel tracks.
+
+---
+
+## 🚀 High-Impact Feature Improvements
+
+### Tier 1: Do These Now (High Impact, Low-Medium Complexity)
+
+| Feature | Impact | Complexity | Details |
+|---|---|---|---|
+| **Move API key to Edge Function** | 🔒 Critical | Low | Route all Claude calls through `claude-proxy` Edge Function |
+| **Add proper routing** | 🧭 High | Low | Use `react-router-dom` for `/pipeline`, `/candidates/:id`, `/roles`, etc. |
+| **Activity timeline on candidate detail** | 📋 High | Low | Query `application_history` + `notes` tables, render as chronological feed |
+| **Auto-score on candidate creation** | ⚡ High | Medium | Trigger AI scoring when a new application is created (via Edge Function or DB trigger) |
+| **Integrate TCOW into offer stage** | 💰 High | Low | Show total cost breakdown when moving candidate to "Offer" stage |
+| **Source tracking analytics** | 📊 High | Medium | Track `source` field through pipeline → show which sources yield best conversion |
+
+### Tier 2: Next Quarter (High Impact, Medium-High Complexity)
+
+| Feature | Impact | Complexity | Details |
+|---|---|---|---|
+| **Interview scheduling** | 📅 Very High | High | Google Calendar API integration, auto-send calendar invites |
+| **Email templates + sequences** | 📧 Very High | Medium | Triggered emails on stage change (Resend or SendGrid) |
+| **Candidate portal** | 🌐 High | High | Self-service status page where candidates track their application |
+| **Smart duplicate detection** | 🔗 Medium | Medium | Fuzzy matching on name + phone + email to suggest merges |
+| **Configurable pipeline stages** | ⚙️ High | Medium | Store stages in `roles` table, allow per-role customization |
+
+---
+
+## 🤖 AI Integrations — Specific, Implementable Ideas
+
+### A. CV Auto-Parser (Edge Function)
+**What:** When a CV file is uploaded, automatically extract structured data using Claude.
+**How:** Supabase Storage trigger → Edge Function → Claude extracts `{current_role, experience_years, skills[], education[], employment_history[], average_tenure_months, employment_gaps[], flags[]}` → stores as `cv_sources.parsed_data` JSONB.
+**Impact:** You already have `parsedCV` slots in scoring/screening prompts. This closes the loop — right now it depends on pre-parsed data that doesn't have an automated ingest path.
+
+### B. AI Candidate Summary (One-click)
+**What:** Generate a 3-sentence recruiter-ready summary for any candidate visible in the detail panel.
+**Prompt:**
+```
+Given this candidate profile and their CV data, write a 3-sentence summary covering:
+1. Current role and relevant experience
+2. Strongest qualification for [role title]
+3. Key concern or gap to probe
+```
+**Impact:** Saves 2-3 min per candidate review. Recruiters can scan 50 candidates in minutes.
+
+### C. AI-Powered Job Description Generator
+**What:** Given a role title + department + priority, generate a structured `job_context` with must-haves, nice-to-haves, KPIs, and culture signals.
+**How:** Add a "Generate with AI" button in the Role modal. Feeds Claude with Samara Lombok's context.
+**Impact:** Solves the cold-start problem — most roles have empty `job_context`, which degrades scoring quality.
+
+### D. Batch Re-Scoring When Job Context Changes
+**What:** When a role's `job_context` is edited, automatically queue re-scoring for all active applications in that role.
+**How:** Supabase DB trigger on `roles.job_context` UPDATE → creates queue entries → Edge Function processes in batch.
+**Impact:** Ensures scores stay current. Currently, if requirements change, old scores become stale with no way to detect it.
+
+### E. Red Flag Aggregation Dashboard
+**What:** Surface a "Risk Radar" widget on the dashboard showing count of high/medium/low flags across all active candidates.
+**How:** Query latest `application_scores.score_data->'risk_flags'` and aggregate by severity.
+**Impact:** Gives hiring managers a single view of problematic candidates requiring attention.
+
+### F. AI Interview Debrief Summarizer
+**What:** After an interview, recruiter paste notes → AI generates a structured debrief with: overall assessment, strengths observed, concerns, recommendation (advance/hold/reject).
+**Impact:** Standardizes interview feedback. Enables comparison across interviewers.
+
+---
+
+## 🤖 AI Agents — Autonomous Recruiter Workflows
+
+### Agent 1: "Intake Agent" (New Application Processor)
+**Trigger:** New row in `applications` table.
+**Actions:**
+1. Score candidate against role → store in `application_scores`
+2. Parse CV if uploaded → store in `cv_sources`
+3. Generate screening questions → store in `screening_questions`
+4. If score ≥ 80: auto-move to "Screening" + draft WhatsApp invite
+5. If score < 40: flag for review with risk summary
+6. Post summary to activity timeline
+
+**Impact:** Eliminates 5-10 min of manual work per application. Recruiters only review edge cases.
+
+### Agent 2: "Follow-Up Agent" (Stale Candidate Nudger)
+**Trigger:** Nightly cron via Supabase `pg_cron`.
+**Actions:**
+1. Find candidates in Screening/Interview for >48h without stage change
+2. Draft follow-up WhatsApp messages via API (not link-opens)
+3. Surface stale list to recruiter dashboard with one-click send
+4. Auto-escalate candidates stale >5 days to hiring manager
+
+**Impact:** Your 48h stale alert already exists but requires manual action. This automates the response.
+
+### Agent 3: "Talent Matcher" (Reverse Search)
+**Trigger:** New role created or role requirements updated.
+**Actions:**
+1. Search existing candidate database for matches
+2. Score top 10 matches against new role
+3. Generate ranked shortlist with summaries
+4. Notify recruiter with one-click "Add to Pipeline" for each match
+
+**Impact:** Turns your ATS from a tracking tool into a **sourcing tool**. Massive value for high-volume hiring.
+
+### Agent 4: "Offer Intelligence Agent"
+**Trigger:** Candidate moves to "Offer" stage.
+**Actions:**
+1. Pull TCOW calculation for the role
+2. Analyze candidate's salary expectations vs budget
+3. Generate negotiation brief (competing market rates, counter-offer risk)
+4. Create draft offer letter with recommended package
+
+**Impact:** Equips hiring managers with data-driven offer strategies.
+
+---
+
+## 💰 Monetization Improvements
+
+### Current Problem
+This appears to be a single-tenant internal tool for Samara Lombok. The multi-tenant SQL setup exists but the frontend doesn't use it.
+
+### Monetization Strategy
+
+| Tier | Name | Price Point | Features |
+|---|---|---|---|
+| **Free** | Starter | $0 | 1 user, 50 candidates, basic pipeline, manual scoring |
+| **Growth** | Professional | $49/user/mo | Unlimited candidates, AI scoring (100/mo), WhatsApp templates, analytics |
+| **Scale** | Business | $99/user/mo | Unlimited AI, auto-scoring agents, interview scheduling, email sequences, API access |
+| **Enterprise** | Enterprise | Custom | SSO, multi-tenant, audit logs, custom stages, white-label, SLA, dedicated support |
+
+### Revenue Accelerators
+1. **AI credit system** — charge per AI scoring/screening beyond tier limits (usage-based revenue)
+2. **WhatsApp Business API integration** — premium feature with message delivery tracking
+3. **Job board publishing** — one-click post to Glints, JobStreet, LinkedIn from within the ATS
+4. **Marketplace integrations** — HRIS connectors (BambooHR, Talenta, etc.) as paid add-ons
+5. **Recruitment analytics reports** — exportable PDF reports as a premium feature
+
+---
+
+## 🏢 Enterprise-Grade Enhancements
+
+### Scalability
+
+| Issue | Fix |
+|---|---|
+| All data fetched client-side without limits | Add server-side pagination on all views (candidates list already has it, Kanban/Dashboard do not) |
+| No caching layer | Add React Query or SWR for request dedup + cache invalidation |
+| Real-time refetches entire dataset | Switch to delta updates — apply the changed row to local state instead of refetching all |
+| Single Supabase project = single region | Plan for multi-region Supabase deploy for enterprise customers |
+
+### Compliance & Security
+
+| Gap | Enhancement |
+|---|---|
+| **GDPR/Data privacy** | Add data retention policies, right-to-erasure flow, consent tracking |
+| **API key in client** | Move ALL external API calls to Edge Functions |
+| **No field-level encryption** | Encrypt PII (phone numbers, salary data) at rest using Supabase Vault |
+| **No rate limiting** | Add rate limits on AI scoring to prevent abuse |
+| **No data export** | Add GDPR-compliant data export (CSV download of candidate data) |
+| **No SSO SCIM** | Add SCIM provisioning for enterprise AD sync |
+
+### Integrations Needed for Enterprise
+
+| Integration | Priority | Reason |
+|---|---|---|
+| **Google Calendar / Outlook** | 🔴 Critical | Interview scheduling |
+| **WhatsApp Business API** | 🔴 Critical | Programmatic messaging at scale |
+| **Email (Resend/SendGrid)** | 🟡 High | Automated communications |
+| **HRIS (BambooHR/Talenta)** | 🟡 High | Auto-sync hired candidates to payroll |
+| **Background Check APIs** | 🟡 Medium | Automate reference and background checks |
+| **Job Boards (Glints/JobStreet)** | 🟡 Medium | Multi-channel sourcing |
+| **Slack/Teams** | 🟢 Low | Recruiter notifications |
+
+---
+
+## ⚔️ Differentiation Strategy vs. Existing Players
+
+### Competitive Landscape (Indonesia/SEA)
+
+| Competitor | Strength | Weakness |
+|---|---|---|
+| **Kalibrr** | Job board + basic ATS | No AI, generic pipeline |
+| **Mekari Talenta** | HRIS + payroll | ATS is an afterthought, no AI scoring |
+| **Workable** | Full-featured global ATS | Expensive, not localized for Indonesia |
+| **Greenhouse** | Enterprise-grade | $6k+/year, overkill for SMBs, no WhatsApp |
+| **Lever** | Great UX | No SEA focus, no local comms integration |
+
+### Your Unfair Advantages
+
+1. **WhatsApp-native communication** — No major ATS player has WhatsApp as a first-class channel. In Indonesia, 93% of recruiters use WhatsApp. Build the best WhatsApp recruiting experience.
+
+2. **AI scoring with local context** — Your prompts already encode Lombok-specific signals (origin-based risk, IDR salary, local market awareness). Competitors using generic AI can't match this.
+
+3. **"Lombok First" hiring policy** — This is not just a filter, it's a philosophic differentiator. Position Samara-ATS as the **ethical ATS for local-first hiring** — ESG-conscious enterprises will pay premium.
+
+4. **Hospitality domain expertise** — Your role/department structures, TCOW calculator, and scoring prompts are tailored for hospitality+construction. Go deep on this vertical before going wide.
+
+### Differentiation Positioning
+
+> **"The AI-native ATS built for Southeast Asian hiring — WhatsApp-first, local-first, and 10x faster than legacy tools."**
+
+### Strategic Roadmap
+
+```mermaid
+gantt
+    title Samara-ATS Strategic Roadmap
+    dateFormat YYYY-MM
+    
+    section P0 Fixes
+    Move API key to Edge Function     :crit, 2026-02, 2026-02
+    Add proper URL routing            :crit, 2026-02, 2026-03
+    
+    section Core Product
+    Activity timeline                 :2026-03, 2026-03
+    Auto-score on creation            :2026-03, 2026-04
+    CV auto-parser                    :2026-03, 2026-04
+    AI job context generator          :2026-04, 2026-04
+    
+    section Growth Features
+    Interview scheduling              :2026-04, 2026-06
+    Email templates                   :2026-05, 2026-06
+    WhatsApp Business API             :2026-05, 2026-07
+    Talent Matcher agent              :2026-06, 2026-07
+    
+    section Enterprise
+    Multi-tenant frontend             :2026-07, 2026-08
+    HRIS integration                  :2026-08, 2026-09
+    Configurable stages               :2026-08, 2026-09
+    Candidate portal                  :2026-09, 2026-10
+```
+
+---
+
+## 📊 Priority Matrix (Impact vs Complexity)
+
+```
+HIGH IMPACT │ Move API key*    │ Auto-score agent    │ WhatsApp API
+            │ URL routing*     │ CV auto-parser      │ Interview scheduling
+            │ Activity timeline│ Talent Matcher      │ Candidate portal
+            │ Source analytics │ Email sequences     │
+            │ TCOW integration │                     │
+            ├─────────────────┼─────────────────────┼──────────────────
+LOW IMPACT  │                  │ Red flag dashboard  │ SCIM provisioning
+            │                  │ Interview debrief   │ Multi-region deploy
+            │                  │ Batch re-scoring    │ Background check API
+            ├─────────────────┼─────────────────────┼──────────────────
+            │  LOW COMPLEXITY  │  MEDIUM COMPLEXITY  │  HIGH COMPLEXITY
+            
+* = Do immediately
+```
+
+---
+
+## Bottom Line
+
+Samara-ATS has a **genuinely strong foundation** — the AI scoring system, WhatsApp integration, and audit infrastructure put it ahead of most early-stage ATS products. The critical gap is the **missing automation layer**: everything requires manual triggering, there's no background processing, and the AI features are powerful but passive.
+
+The 3 moves that would make this 10x better:
+1. **Automate the intake workflow** (Agent 1: auto-score → auto-parse CV → auto-generate questions → auto-advance/flag)
+2. **Integrate WhatsApp Business API** (programmatic messaging, not link-opens)
+3. **Build the Talent Matcher** (reverse search + auto-shortlist turns tracking into sourcing)
+
+These three changes transform Samara-ATS from a *tracking tool* into an *AI-powered recruiting engine*.
