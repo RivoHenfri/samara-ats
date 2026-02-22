@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { Plus, Pencil, Trash2, X, Check, Link2, Wand2 } from 'lucide-react'
 
 const PRIORITIES = ['Critical', 'Core', 'Support']
+const ROLE_TYPES = ['Replacement', 'New Position', 'Additional Headcount']
 const LOCATIONS = ['Lombok', 'Bali', 'Jakarta', 'Surabaya', 'Bandung', 'Yogyakarta', 'Other Indonesia', 'International']
 const WORK_ARRANGEMENTS = ['Onsite', 'Remote', 'Hybrid']
 
@@ -12,13 +13,19 @@ const priorityStyle = {
   Support: { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' },
 }
 
+const roleTypeStyle = {
+  'Replacement': { background: 'rgba(192,97,74,0.12)', color: '#C0614A' },
+  'New Position': { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  'Additional Headcount': { background: 'rgba(184,150,90,0.12)', color: '#8A6010' },
+}
+
 const deptStyle = {
   Hospitality: { background: 'rgba(184,150,90,0.12)', color: '#8A6010' },
   Operations: { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
   Construction: { background: 'rgba(44,42,39,0.08)', color: '#2C2A27' },
 }
 
-const emptyForm = { title: '', department: '', priority: 'Core', status: 'Open', job_context: '', location: 'Lombok', work_arrangement: 'Onsite' }
+const emptyForm = { title: '', department: '', priority: 'Core', status: 'Open', role_type: '', job_context: '', location: 'Lombok', work_arrangement: 'Onsite' }
 
 export default function RolesManager() {
   const [roles, setRoles] = useState([])
@@ -29,6 +36,7 @@ export default function RolesManager() {
   const [form, setForm] = useState(emptyForm)
   const [filterDept, setFilterDept] = useState('All')
   const [filterStatus, setFilterStatus] = useState('All')
+  const [filterType, setFilterType] = useState('All')
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [copied, setCopied] = useState(null) // role.id that was just copied
@@ -64,7 +72,7 @@ export default function RolesManager() {
 
   const openEdit = (role) => {
     setEditingRole(role)
-    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status, job_context: role.job_context || '', location: role.location || 'Lombok', work_arrangement: role.work_arrangement || 'Onsite' })
+    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status, role_type: role.role_type || '', job_context: role.job_context || '', location: role.location || 'Lombok', work_arrangement: role.work_arrangement || 'Onsite' })
     setShowModal(true)
   }
 
@@ -103,6 +111,7 @@ export default function RolesManager() {
   const filtered = roles.filter(r => {
     if (filterDept !== 'All' && r.department !== filterDept) return false
     if (filterStatus !== 'All' && r.status !== filterStatus) return false
+    if (filterType !== 'All' && r.role_type !== filterType) return false
     return true
   })
 
@@ -150,6 +159,15 @@ export default function RolesManager() {
           <option>Open</option>
           <option>Closed</option>
         </select>
+        <select
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+          className="form-control"
+          style={{ width: 'auto', minWidth: 160 }}
+        >
+          <option value="All">All Types</option>
+          {ROLE_TYPES.map(t => <option key={t}>{t}</option>)}
+        </select>
       </div>
 
       {/* Table */}
@@ -160,6 +178,7 @@ export default function RolesManager() {
               <th>Role</th>
               <th>Department</th>
               <th>Priority</th>
+              <th>Type</th>
               <th>Candidates</th>
               <th>Status</th>
               <th>Actions</th>
@@ -181,6 +200,15 @@ export default function RolesManager() {
                   <span className="tag" style={priorityStyle[role.priority]}>
                     {role.priority}
                   </span>
+                </td>
+                <td>
+                  {role.role_type ? (
+                    <span className="tag" style={roleTypeStyle[role.role_type]}>
+                      {role.role_type}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#ccc', fontSize: 12 }}>—</span>
+                  )}
                 </td>
                 <td style={{ color: '#9A8F80' }}>
                   {candidateCounts[role.id] || 0}
@@ -266,7 +294,7 @@ export default function RolesManager() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="empty-state">No roles found</td>
+                <td colSpan={7} className="empty-state">No roles found</td>
               </tr>
             )}
           </tbody>
@@ -311,6 +339,17 @@ export default function RolesManager() {
                     className="form-control"
                   >
                     {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Role Type</label>
+                  <select
+                    value={form.role_type}
+                    onChange={e => setForm({ ...form, role_type: e.target.value })}
+                    className="form-control"
+                  >
+                    <option value="">— Select Type —</option>
+                    {ROLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
