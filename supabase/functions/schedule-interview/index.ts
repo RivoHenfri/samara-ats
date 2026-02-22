@@ -12,6 +12,7 @@ serve(async (req) => {
     try {
         const {
             interview_id,
+            user_id,
             selected_date,
             selected_slot,
             interview_type,
@@ -51,7 +52,7 @@ serve(async (req) => {
                 const { data: zoomIntegration } = await supabase
                     .from('user_integrations')
                     .select('access_token, refresh_token, expires_at')
-                    .eq('user_id', interview.organizer_id)
+                    .eq('user_id', user_id || interview.organizer_id)
                     .eq('provider', 'zoom')
                     .single()
 

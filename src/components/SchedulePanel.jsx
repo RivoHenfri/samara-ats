@@ -145,37 +145,50 @@ export default function SchedulePanel({ app }) {
             }
         })
 
-        // 5. Try auto-generating Zoom link & Outlook calendar via Edge Function
+        // 5. Try auto-generating Zoom link via Edge Function BEFORE WhatsApp message
+        let zoomLink = form.meeting_link || null
         if (form.interview_type === 'Online' && !form.meeting_link) {
             try {
-                const { data: efData } = await supabase.functions.invoke('schedule-interview', {
-                    body: {
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+                const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+                const efResp = await fetch(`${supabaseUrl}/functions/v1/schedule-interview`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': anonKey,
+                        'Authorization': `Bearer ${anonKey}`,
+                    },
+                    body: JSON.stringify({
                         interview_id: interview.id,
+                        user_id: user.id,
                         selected_date: scheduledAt.toISOString().split('T')[0],
                         selected_slot: `${scheduledAt.getHours().toString().padStart(2, '0')}:${scheduledAt.getMinutes().toString().padStart(2, '0')}`,
                         interview_type: form.interview_type,
                         round: form.round,
                         interviewers: form.interviewers,
-                    }
+                    }),
                 })
-                if (efData?.meeting_link) {
-                    // Update UI with the generated link
-                    await fetchInterviews()
+                if (efResp.ok) {
+                    const efData = await efResp.json()
+                    if (efData?.meeting_link) zoomLink = efData.meeting_link
                 }
             } catch (efErr) {
-                console.warn('Edge Function call skipped or failed:', efErr)
+                console.warn('Zoom link generation skipped or failed:', efErr)
             }
         }
 
-        // 6. Open WhatsApp to notify candidate
+        // 6. Open WhatsApp to notify candidate (now includes Zoom link if generated)
         const raw = app.candidates?.whatsapp || ''
         let number = raw.replace(/[\s\-\(\)]/g, '')
         if (number.startsWith('0')) number = '62' + number.slice(1)
         if (number.startsWith('+')) number = number.slice(1)
 
         if (number) {
-            const typeLabel = form.interview_type === 'Online' ? '(Online via Zoom)' : `(Onsite at ${form.location})`
-            const message = `Hi ${app.candidates?.full_name}, we'd like to invite you to a ${form.round} interview for the ${app.roles?.title} position ${typeLabel}.\n\nDate: ${scheduledAt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\nTime: ${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nDuration: ${form.duration_minutes} minutes\n\nPlease confirm your attendance. Thank you!`
+            const typeLabel = form.interview_type === 'Online'
+                ? `(Online via Zoom)`
+                : `(Onsite at ${form.location})`
+            const linkLine = zoomLink ? `\nZoom Link: ${zoomLink}` : ''
+            const message = `Hi ${app.candidates?.full_name}, we'd like to invite you to a ${form.round} interview for the ${app.roles?.title} position ${typeLabel}.\n\nDate: ${scheduledAt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\nTime: ${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nDuration: ${form.duration_minutes} minutes${linkLine}\n\nPlease confirm your attendance. Thank you!`
             window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank')
         }
 
