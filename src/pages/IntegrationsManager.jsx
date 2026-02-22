@@ -91,8 +91,13 @@ export default function IntegrationsManager() {
                             Automatically generate and attach a unique Zoom meeting link to scheduled online interviews.
                         </p>
                         {hasIntegration('zoom') ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--teal)', fontSize: 13, fontWeight: 500 }}>
-                                <CheckCircle2 size={16} /> Connected
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--teal)', fontSize: 13, fontWeight: 500 }}>
+                                    <CheckCircle2 size={16} /> Connected
+                                </div>
+                                <button onClick={connectZoom} className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 12px' }}>
+                                    Reconnect
+                                </button>
                             </div>
                         ) : (
                             <button onClick={connectZoom} className="btn" style={{ background: '#2D8CFF', color: 'white', width: '100%', border: 'none' }}>
