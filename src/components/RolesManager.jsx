@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Link2 } from 'lucide-react'
 
 const DEPARTMENTS = ['Hospitality', 'Operations', 'Construction']
 const PRIORITIES = ['Critical', 'Core', 'Support']
@@ -30,6 +30,7 @@ export default function RolesManager() {
   const [filterStatus, setFilterStatus] = useState('All')
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [copied, setCopied] = useState(null) // role.id that was just copied
 
   useEffect(() => { fetchData() }, [])
 
@@ -76,6 +77,13 @@ export default function RolesManager() {
     const newStatus = role.status === 'Open' ? 'Closed' : 'Open'
     await supabase.from('roles').update({ status: newStatus }).eq('id', role.id)
     fetchData()
+  }
+
+  const handleCopyLink = async (role) => {
+    const url = `${window.location.origin}/apply/${role.id}`
+    await navigator.clipboard.writeText(url)
+    setCopied(role.id)
+    setTimeout(() => setCopied(null), 2000)
   }
 
   const handleDelete = async (id) => {
@@ -195,6 +203,17 @@ export default function RolesManager() {
                     >
                       <Pencil size={14} />
                     </button>
+                    {role.status === 'Open' && (
+                      <button
+                        onClick={() => handleCopyLink(role)}
+                        title={copied === role.id ? 'Copied!' : 'Copy application link'}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === role.id ? '#4A7C74' : '#9A8F80', padding: 2, display: 'flex' }}
+                        onMouseEnter={e => { if (copied !== role.id) e.currentTarget.style.color = '#2C2A27' }}
+                        onMouseLeave={e => { if (copied !== role.id) e.currentTarget.style.color = '#9A8F80' }}
+                      >
+                        {copied === role.id ? <Check size={14} /> : <Link2 size={14} />}
+                      </button>
+                    )}
                     {deleteConfirm === role.id ? (
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button
