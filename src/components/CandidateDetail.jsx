@@ -156,7 +156,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       // ── Auto-trigger AI on stage transition (fire-and-forget) ──
       if (newStage === 'Screening' && prevStage !== 'Screening') {
         autoScore(app.id)
-      } else if (newStage === 'Interview' && prevStage !== 'Interview') {
+      } else if (newStage.startsWith('Interview') && !prevStage.startsWith('Interview')) {
         autoGenerateQuestions(app.id)
       }
     } catch (err) {
@@ -324,7 +324,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
           }}>
             CV
           </p>
-          <CVSourcePanel candidateId={candidate?.id} canEdit={isManager} />
+          <CVSourcePanel candidateId={candidate?.id} canEdit={isManager} onUpdated={onUpdated} />
         </div>
 
         {/* ── Tabs ── */}

@@ -5,7 +5,9 @@ import {
   FileText, Link2, Upload, Eye, Download,
   ChevronDown, ChevronUp, AlertTriangle,
   Clock, Loader2, CheckCircle, X, Sparkles, ExternalLink,
+  CircleCheck, CircleAlert, Info,
 } from 'lucide-react'
+import { syncParsedDataToCandidate, validateParsedData } from '../lib/cvSync'
 
 const ALLOWED_TYPES = {
   'application/pdf': 'PDF',
@@ -119,7 +121,7 @@ function ParsedRow({ label, value }) {
 // Props:
 //   candidateId  — UUID of the candidate
 //   canEdit      — boolean (Admin/Manager only)
-export default function CVSourcePanel({ candidateId, canEdit }) {
+export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
   const { user } = useAuth()
   const [sources,         setSources]         = useState([])
   const [loading,         setLoading]         = useState(true)
@@ -132,6 +134,8 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
   const [error,           setError]           = useState(null)
   const [showHistory,     setShowHistory]     = useState(false)
   const [showParsed,      setShowParsed]      = useState(false)
+  const [validationChecks, setValidationChecks] = useState([])
+  const [showValidation,  setShowValidation]  = useState(false)
   const fileRef            = useRef()
   // Track which source IDs we've already attempted auto-parse for (prevents
   // repeated triggers across re-renders while parsing is in progress)
@@ -143,6 +147,13 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
   useEffect(() => {
     if (candidateId) fetchSources()
   }, [candidateId])
+
+  // Show validation banner for already-parsed CVs on load
+  useEffect(() => {
+    if (activeSource?.parsed_data && validationChecks.length === 0) {
+      setValidationChecks(validateParsedData(activeSource.parsed_data))
+    }
+  }, [activeSource?.id])
 
   // ── Auto-parse: trigger immediately when an uploaded CV has no parsed data ──
   // Runs once per unique source ID to avoid re-triggering during parse state changes.
@@ -243,6 +254,14 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
       })
       if (dbErr) throw new Error(dbErr.message)
 
+      // Auto-populate candidate profile from parsed data
+      if (parsedData) {
+        await syncParsedDataToCandidate(candidateId, parsedData)
+        setValidationChecks(validateParsedData(parsedData))
+        setShowValidation(true)
+        onUpdated?.()
+      }
+
       setPendingFile(null)
       setInputMode(null)
       if (parsedData) setShowParsed(true)
@@ -328,6 +347,13 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
       await supabase.from('cv_sources')
         .update({ parsed_data: parsedData, parsed_at: new Date().toISOString() })
         .eq('id', source.id)
+
+      // Auto-populate candidate profile from parsed data
+      await syncParsedDataToCandidate(candidateId, parsedData)
+      setValidationChecks(validateParsedData(parsedData))
+      setShowValidation(true)
+      onUpdated?.()
+
       await fetchSources()
       setShowParsed(true)
     } catch (err) {
@@ -538,6 +564,66 @@ export default function CVSourcePanel({ candidateId, canEdit }) {
                   <p style={{ fontSize: 10, color: 'var(--stone-light)', marginTop: 2 }}>
                     Parsed {relTime(activeSource.parsed_at)}
                   </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Data validation summary */}
+          {validationChecks.length > 0 && activeSource?.parsed_data && (
+            <>
+              <div
+                onClick={() => setShowValidation(v => !v)}
+                style={{
+                  padding: '8px 14px', borderTop: '1px solid var(--sand-dark)',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  cursor: 'pointer', userSelect: 'none',
+                }}
+              >
+                <CircleCheck size={11} style={{ color: 'var(--teal)', flexShrink: 0 }} />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--teal)' }}>
+                  Data Quality
+                </span>
+                {(() => {
+                  const missing = validationChecks.filter(c => c.status === 'missing').length
+                  const warnings = validationChecks.filter(c => c.status === 'warning').length
+                  if (missing > 0) return (
+                    <span style={{ background: 'var(--alert-bg)', color: 'var(--alert)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 600 }}>
+                      {missing} missing
+                    </span>
+                  )
+                  if (warnings > 0) return (
+                    <span style={{ background: 'var(--gold-bg)', color: 'var(--gold)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 600 }}>
+                      {warnings} warning{warnings > 1 ? 's' : ''}
+                    </span>
+                  )
+                  return (
+                    <span style={{ background: 'var(--teal-bg)', color: 'var(--teal)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 600 }}>
+                      All clear
+                    </span>
+                  )
+                })()}
+                <span style={{ marginLeft: 'auto', color: 'var(--stone)' }}>
+                  {showValidation ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </span>
+              </div>
+
+              {showValidation && (
+                <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--sand-dark)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {validationChecks.map((check, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
+                      {check.status === 'ok' && <CircleCheck size={12} style={{ color: 'var(--teal)', flexShrink: 0 }} />}
+                      {check.status === 'missing' && <CircleAlert size={12} style={{ color: 'var(--alert)', flexShrink: 0 }} />}
+                      {check.status === 'warning' && <Info size={12} style={{ color: 'var(--gold)', flexShrink: 0 }} />}
+                      <span style={{ fontWeight: 500, color: 'var(--charcoal)', minWidth: 80 }}>{check.field}</span>
+                      <span style={{
+                        color: check.status === 'ok' ? 'var(--stone)' : check.status === 'missing' ? 'var(--alert)' : 'var(--gold)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {check.message}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </>

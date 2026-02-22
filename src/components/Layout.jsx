@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, Briefcase, Calculator,
   LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon
 } from 'lucide-react'
+import NotificationCenter from './NotificationCenter'
 
 export default function Layout({ children, currentPage, setCurrentPage }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -55,6 +56,11 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
           {collapsed && (
             <div className="brand-wordmark" style={{ fontSize: 16, letterSpacing: '0.08em' }}>S</div>
           )}
+        </div>
+
+        {/* Notification center */}
+        <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <NotificationCenter collapsed={collapsed} onNavigate={setCurrentPage} />
         </div>
 
         {/* Nav items */}
