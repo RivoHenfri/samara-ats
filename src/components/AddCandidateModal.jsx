@@ -17,7 +17,7 @@ async function extractCVWithClaude(base64PDF, retries = 3) {
     const { data, error } = await supabase.functions.invoke('claude-proxy', {
       body: {
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 2048,
         beta: 'pdfs-2024-09-25',
         messages: [{
           role: 'user',
@@ -75,7 +75,23 @@ async function extractCVWithClaude(base64PDF, retries = 3) {
     const jsonMatch = raw.match(/\{[\s\S]*\}/)
     if (jsonMatch) raw = jsonMatch[0]
 
-    return JSON.parse(raw)
+    // Try parsing, with truncated JSON repair as fallback
+    try {
+      return JSON.parse(raw)
+    } catch {
+      // Attempt to repair truncated JSON by closing unclosed brackets
+      let repaired = raw
+      // Remove any trailing incomplete key-value pair
+      repaired = repaired.replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '')
+      // Count and close unclosed brackets
+      const opens = (repaired.match(/\[/g) || []).length
+      const closes = (repaired.match(/\]/g) || []).length
+      const braceOpens = (repaired.match(/\{/g) || []).length
+      const braceCloses = (repaired.match(/\}/g) || []).length
+      repaired += ']'.repeat(Math.max(0, opens - closes))
+      repaired += '}'.repeat(Math.max(0, braceOpens - braceCloses))
+      return JSON.parse(repaired)
+    }
   }
 }
 
