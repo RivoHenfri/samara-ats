@@ -127,8 +127,21 @@ export default function KanbanBoard() {
     if (!dragging || dragging.stage === stage) return
     const prevStage = dragging.stage
     const appId = dragging.id
-    await supabase.from('applications').update({ stage }).eq('id', appId)
     setDragging(null)
+
+    const { error } = await supabase.from('applications').update({ stage }).eq('id', appId)
+
+    if (error) {
+      // Log full Postgres error so it's visible in DevTools > Console
+      console.error('[KanbanBoard] Stage update failed', {
+        appId, fromStage: prevStage, toStage: stage,
+        code: error.code, message: error.message,
+        details: error.details, hint: error.hint,
+      })
+      fetchApplications() // re-fetch to revert any optimistic state
+      return
+    }
+
     fetchApplications()
 
     // ── Auto-trigger AI in background based on destination stage ──
