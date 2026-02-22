@@ -22,11 +22,13 @@ export default function NotificationCenter({ collapsed, onNavigate }) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef()
 
+  const ACTIVE_STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer']
+
   const fetchAndCheck = useCallback(async () => {
     const { data } = await supabase
       .from('applications')
       .select('*, candidates!inner(full_name, id), roles!inner(title, department)')
-      .not('stage', 'in', '("Hired","Rejected")')
+      .in('stage', ACTIVE_STAGES)
 
     if (data) {
       setAlerts(checkStagnation(data))

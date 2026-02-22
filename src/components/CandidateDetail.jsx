@@ -139,8 +139,10 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
     const newStage = editData.stage
     setSavingEdit(true)
     try {
+      const appUpdate = { stage: newStage }
+      if (editData.role_id) appUpdate.role_id = editData.role_id   // guard: never send empty string for UUID column
       await supabase.from('applications')
-        .update({ stage: newStage, role_id: editData.role_id })
+        .update(appUpdate)
         .eq('id', app.id)
       await supabase.from('candidates').update({
         whatsapp: editData.whatsapp,
