@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Users, Briefcase, AlertTriangle, TrendingUp } from 'lucide-react'
+import { checkStagnation, groupByStage } from '../lib/stagnationMonitor'
 
 const DEPTS = ['All', 'Hospitality', 'Operations', 'Construction']
 
@@ -54,11 +55,9 @@ export default function Dashboard() {
 
   const openRoles = filteredRoles.filter(r => r.status === 'Open').length
 
-  const stagnant = filteredApps.filter(a => {
-    if (['Offer', 'Hired', 'Rejected'].includes(a.stage)) return false
-    const hrs = (Date.now() - new Date(a.last_stage_change_at)) / 36e5
-    return hrs > 48
-  }).length
+  const stagnationAlerts = checkStagnation(filteredApps)
+  const stagnant = stagnationAlerts.length
+  const staleByStage = groupByStage(stagnationAlerts)
 
   const hired = filteredApps.filter(a => a.stage === 'Hired').length
 
@@ -99,14 +98,26 @@ export default function Dashboard() {
 
       <div className="page-body">
 
-        {/* 48h stale alert */}
+        {/* Stale candidate alert with per-stage breakdown */}
         {stagnant > 0 && (
-          <div className="alert-banner">
-            <AlertTriangle size={15} color="var(--alert)" />
-            <span>
-              <strong style={{ color: 'var(--alert)' }}>{stagnant} candidate{stagnant > 1 ? 's' : ''}</strong>
-              {' '}have not moved in 48+ hours and need action.
-            </span>
+          <div className="alert-banner" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={15} color="var(--alert)" style={{ flexShrink: 0 }} />
+              <span>
+                <strong style={{ color: 'var(--alert)' }}>{stagnant} candidate{stagnant !== 1 ? 's' : ''}</strong>
+                {' '}stagnant beyond stage threshold — action required
+              </span>
+            </div>
+            {Object.entries(staleByStage).map(([stage, group]) => (
+              <div key={stage} style={{ display: 'flex', alignItems: 'baseline', gap: 6, paddingLeft: 23 }}>
+                <span style={{ fontSize: 11, color: 'var(--alert)', fontWeight: 600, flexShrink: 0 }}>
+                  {group.count} in {stage}:
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--charcoal)' }}>
+                  {group.nextAction}
+                </span>
+              </div>
+            ))}
           </div>
         )}
 

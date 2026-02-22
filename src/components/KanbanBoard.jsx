@@ -6,6 +6,7 @@ import CandidateCard, { getWhatsAppMessage } from './CandidateCard'
 import AddCandidateModal from './AddCandidateModal'
 import { Plus, Search, RotateCcw, X } from 'lucide-react'
 import MultiSelectDropdown from './MultiSelectDropdown'
+import { checkStagnation, groupByStage, STAGE_NEXT_ACTION } from '../lib/stagnationMonitor'
 
 const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
@@ -21,21 +22,6 @@ const colClass = {
   Offer: 'k-col-offer',
   Hired: 'k-col-hired',
   Rejected: 'k-col-rejected',
-}
-
-// ── Stagnation config ──────────────────────────────────────────────────────
-// Threshold: candidates inactive longer than this get a proactive alert.
-const STAGNATION_DAYS = 5
-const STAGNATION_HOURS = STAGNATION_DAYS * 24
-
-// Recommended next action per stage shown inside the alert banner
-const STAGE_NEXT_ACTION = {
-  New: 'Move to Screening — AI will score automatically',
-  Screening: 'Review AI score and schedule an interview',
-  'Interview Pending': 'Generate interview invite and wait for candidate booking',
-  'Interview Scheduled': 'Conduct the interview on Zoom',
-  'Interview Completed': 'Capture interview feedback and move to Offer or Reject',
-  Offer: 'Follow up on offer status — confirm acceptance or close',
 }
 
 export default function KanbanBoard() {
@@ -193,18 +179,9 @@ export default function KanbanBoard() {
   }
 
   // Proactive stagnation detection across all active pipeline stages
-  const staleApps = applications.filter(app => {
-    if (['Hired', 'Rejected'].includes(app.stage)) return false
-    const hrs = (Date.now() - new Date(app.updated_at)) / 36e5
-    return hrs > STAGNATION_HOURS
-  })
-  const staleCount = staleApps.length
-
-  // Group stale counts by stage for per-stage recommended action display
-  const staleByStage = staleApps.reduce((acc, app) => {
-    acc[app.stage] = (acc[app.stage] || 0) + 1
-    return acc
-  }, {})
+  const stagnationAlerts = checkStagnation(applications)
+  const staleCount = stagnationAlerts.length
+  const staleByStage = groupByStage(stagnationAlerts)
 
   if (loading) return (
     <div className="loading-state">
@@ -330,15 +307,15 @@ export default function KanbanBoard() {
               </svg>
               <span>
                 <strong style={{ color: 'var(--alert)' }}>{staleCount} candidate{staleCount !== 1 ? 's' : ''}</strong>
-                {' '}stagnant for {STAGNATION_DAYS}+ days — action required
+                {' '}stagnant beyond stage threshold — action required
               </span>
             </div>
             {/* Per-stage recommended next actions */}
-            {Object.entries(staleByStage).map(([stage, count]) =>
+            {Object.entries(staleByStage).map(([stage, group]) =>
               STAGE_NEXT_ACTION[stage] ? (
                 <div key={stage} style={{ display: 'flex', alignItems: 'baseline', gap: 6, paddingLeft: 22 }}>
                   <span style={{ fontSize: 11, color: 'var(--alert)', fontWeight: 600, flexShrink: 0 }}>
-                    {count} in {stage}:
+                    {group.count} in {stage}:
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--charcoal)' }}>
                     {STAGE_NEXT_ACTION[stage]}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Calendar, Clock, Video, Send } from 'lucide-react'
+import { autoGenerateQuestions } from '../lib/aiWorkflow'
 
 export default function SchedulePanel({ app }) {
     const { user } = useAuth()
@@ -47,6 +48,9 @@ export default function SchedulePanel({ app }) {
 
         // Move to Interview Pending (using the base string 'Interview Pending' to easily trace)
         await supabase.from('applications').update({ stage: 'Interview Pending' }).eq('id', app.id)
+
+        // Auto-generate screening questions (fire-and-forget)
+        autoGenerateQuestions(app.id)
 
         // Generate WhatsApp link (Mocking the WhatsApp Business API push for now)
         const raw = app.candidates?.whatsapp || ''
