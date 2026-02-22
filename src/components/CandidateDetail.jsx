@@ -139,6 +139,20 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
     const newStage = editData.stage
     setSavingEdit(true)
     try {
+      // ── Stage enforcement: block "Interview Scheduled" without a real scheduled date ──
+      if (newStage === 'Interview Scheduled' && prevStage !== 'Interview Scheduled') {
+        const { data: scheduled } = await supabase
+          .from('interviews')
+          .select('id')
+          .eq('application_id', app.id)
+          .not('scheduled_at', 'is', null)
+          .limit(1)
+        if (!scheduled || scheduled.length === 0) {
+          alert('Cannot move to "Interview Scheduled". Schedule an interview first from the Scheduler tab.')
+          setSavingEdit(false)
+          return
+        }
+      }
       const appUpdate = { stage: newStage }
       if (editData.role_id) appUpdate.role_id = editData.role_id   // guard: never send empty string for UUID column
       await supabase.from('applications')

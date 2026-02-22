@@ -129,6 +129,20 @@ export default function KanbanBoard() {
     const appId = dragging.id
     setDragging(null)
 
+    // ── Stage enforcement: block "Interview Scheduled" without a real scheduled date ──
+    if (stage === 'Interview Scheduled') {
+      const { data: scheduled } = await supabase
+        .from('interviews')
+        .select('id')
+        .eq('application_id', appId)
+        .not('scheduled_at', 'is', null)
+        .limit(1)
+      if (!scheduled || scheduled.length === 0) {
+        alert('Cannot move to "Interview Scheduled". Schedule an interview first from the candidate profile.')
+        return
+      }
+    }
+
     const { error } = await supabase.from('applications').update({ stage }).eq('id', appId)
 
     if (error) {

@@ -30,7 +30,7 @@ export default function CandidateSchedulingPortal() {
     const fetchInterview = async () => {
         const { data, error } = await supabase
             .from('interviews')
-            .select('*, applications(candidates(full_name), roles(title, department))')
+            .select('*, applications(id, candidates(full_name), roles(title, department))')
             .eq('id', interview_id)
             .single()
 
@@ -51,34 +51,34 @@ export default function CandidateSchedulingPortal() {
 
     const handleConfirm = async () => {
         setConfirming(true)
-        // 1. In a real environment, you'd invoke the `schedule-interview` Edge Function here.
-        // That function creates the Zoom + MS Calendar events, and pushes a WhatsApp message.
-
-        const [hours, minutes] = selectedSlot.split(':')
-        const scheduledAt = new Date(selectedDate)
-        scheduledAt.setHours(parseInt(hours), parseInt(minutes), 0, 0)
-
-        // Simulate API call
-        setTimeout(async () => {
-            // Direct supabase patch for UI simulation (though edge function should really do this)
-            await supabase
-                .from('interviews')
-                .update({
-                    status: 'scheduled',
-                    scheduled_at: scheduledAt.toISOString(),
-                    end_at: addMinutes(scheduledAt, interview?.duration_minutes || 60).toISOString(),
-                    meeting_link: 'https://zoom.us/j/mock12345'
-                })
-                .eq('id', interview_id)
-
-            await supabase
-                .from('applications')
-                .update({ stage: 'Interview Scheduled' })
-                .eq('id', interview.application_id)
-
+        try {
+            const { data, error } = await supabase.functions.invoke('schedule-interview', {
+                body: {
+                    interview_id: interview_id,
+                    selected_date: format(selectedDate, 'yyyy-MM-dd'),
+                    selected_slot: selectedSlot,
+                    interview_type: interview.interview_type || 'Online',
+                    round: interview.round || '',
+                    interviewers: interview.interviewers || [],
+                }
+            })
+            if (error) throw error
             setSuccess(true)
-            setConfirming(false)
-        }, 1500)
+        } catch (err) {
+            console.error('Scheduling failed:', err)
+            // Fallback: direct DB update
+            const [hours, minutes] = selectedSlot.split(':')
+            const scheduledAt = new Date(selectedDate)
+            scheduledAt.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+            await supabase.from('interviews').update({
+                status: 'scheduled',
+                scheduled_at: scheduledAt.toISOString(),
+                end_at: addMinutes(scheduledAt, interview?.duration_minutes || 60).toISOString(),
+            }).eq('id', interview_id)
+            await supabase.from('applications').update({ stage: 'Interview Scheduled' }).eq('id', interview.application_id)
+            setSuccess(true)
+        }
+        setConfirming(false)
     }
 
     if (loading) return (
@@ -127,16 +127,36 @@ export default function CandidateSchedulingPortal() {
                         <h3 className="text-xl font-semibold text-charcoal mb-4">
                             {interview.applications.roles.title}
                         </h3>
-                        <p className="text-stone-dark text-sm mb-6">Samara Lombok — {interview.applications.roles.department}</p>
+                        <p className="text-stone-dark text-sm mb-6">Samara — {interview.applications.roles.department}</p>
 
+                        {interview.round && (
+                            <div className="flex items-center gap-3 text-stone mb-4">
+                                <span className="text-sm font-medium" style={{ background: 'rgba(0,0,0,0.05)', padding: '2px 10px', borderRadius: 20, fontSize: 11 }}>{interview.round} Round</span>
+                            </div>
+                        )}
                         <div className="flex items-center gap-3 text-stone mb-4">
                             <Clock size={16} />
                             <span className="text-sm">{interview.duration_minutes || 60} minutes</span>
                         </div>
                         <div className="flex items-center gap-3 text-stone mb-4">
-                            <VideoIcon icon={<VideoIconSVG />} />
-                            <span className="text-sm">Online (Zoom link provided upon confirmation)</span>
+                            {interview.interview_type === 'Onsite' ? (
+                                <>
+                                    <CalendarIcon size={16} />
+                                    <span className="text-sm">📍 Onsite{interview.location ? ` — ${interview.location}` : ''}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <VideoIcon icon={<VideoIconSVG />} />
+                                    <span className="text-sm">🎥 Online (Zoom link provided upon confirmation)</span>
+                                </>
+                            )}
                         </div>
+                        {interview.interviewers && interview.interviewers.length > 0 && (
+                            <div className="text-stone mb-4">
+                                <span className="text-xs font-bold uppercase tracking-wider" style={{ letterSpacing: '0.1em' }}>Interviewer(s)</span>
+                                <div className="text-sm mt-1">{interview.interviewers.join(', ')}</div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right panel */}
@@ -170,8 +190,8 @@ export default function CandidateSchedulingPortal() {
                                             key={slot}
                                             onClick={() => setSelectedSlot(slot)}
                                             className={`py-2 px-3 rounded text-sm font-medium border transition-colors ${selectedSlot === slot
-                                                    ? 'border-teal bg-teal text-white'
-                                                    : 'border-stone-light text-charcoal hover:border-teal hover:text-teal'
+                                                ? 'border-teal bg-teal text-white'
+                                                : 'border-stone-light text-charcoal hover:border-teal hover:text-teal'
                                                 }`}
                                         >
                                             {slot}
