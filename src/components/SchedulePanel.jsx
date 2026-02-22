@@ -170,7 +170,11 @@ export default function SchedulePanel({ app }) {
                 })
                 if (efResp.ok) {
                     const efData = await efResp.json()
+                    console.log('[DEBUG] schedule-interview response:', efData)
                     if (efData?.meeting_link) zoomLink = efData.meeting_link
+                } else {
+                    const errText = await efResp.text()
+                    console.error('[DEBUG] schedule-interview failed:', efResp.status, errText)
                 }
             } catch (efErr) {
                 console.warn('Zoom link generation skipped or failed:', efErr)
