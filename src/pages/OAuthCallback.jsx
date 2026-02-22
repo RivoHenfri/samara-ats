@@ -8,12 +8,15 @@ export default function OAuthCallback() {
     const { provider } = useParams()
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
-    const { user } = useAuth()
+    const { user, loading: authLoading } = useAuth()
 
     const [status, setStatus] = useState('loading')
     const [errorMsg, setErrorMsg] = useState('')
 
     useEffect(() => {
+        // Wait for auth session to fully restore before doing anything
+        if (authLoading) return
+
         const code = searchParams.get('code')
 
         if (!user) {
@@ -29,7 +32,7 @@ export default function OAuthCallback() {
         }
 
         exchangeCode(code)
-    }, [provider, searchParams, user])
+    }, [provider, searchParams, user, authLoading])
 
     const exchangeCode = async (code) => {
         try {
