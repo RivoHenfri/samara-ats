@@ -1,23 +1,24 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, X, Check, Link2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Link2, Wand2 } from 'lucide-react'
 
-const DEPARTMENTS = ['Hospitality', 'Operations', 'Construction']
 const PRIORITIES = ['Critical', 'Core', 'Support']
+const LOCATIONS = ['Lombok', 'Bali', 'Jakarta', 'Surabaya', 'Bandung', 'Yogyakarta', 'Other Indonesia', 'International']
+const WORK_ARRANGEMENTS = ['Onsite', 'Remote', 'Hybrid']
 
 const priorityStyle = {
   Critical: { background: 'rgba(192,97,74,0.12)', color: '#C0614A' },
-  Core:     { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
-  Support:  { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' },
+  Core: { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  Support: { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' },
 }
 
 const deptStyle = {
-  Hospitality:  { background: 'rgba(184,150,90,0.12)', color: '#8A6010' },
-  Operations:   { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
-  Construction: { background: 'rgba(44,42,39,0.08)',   color: '#2C2A27' },
+  Hospitality: { background: 'rgba(184,150,90,0.12)', color: '#8A6010' },
+  Operations: { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  Construction: { background: 'rgba(44,42,39,0.08)', color: '#2C2A27' },
 }
 
-const emptyForm = { title: '', department: 'Hospitality', priority: 'Core', status: 'Open', job_context: '' }
+const emptyForm = { title: '', department: '', priority: 'Core', status: 'Open', job_context: '', location: 'Lombok', work_arrangement: 'Onsite' }
 
 export default function RolesManager() {
   const [roles, setRoles] = useState([])
@@ -31,8 +32,15 @@ export default function RolesManager() {
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [copied, setCopied] = useState(null) // role.id that was just copied
+  const [departments, setDepartments] = useState([])
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData(); fetchDepartments() }, [])
+
+  const fetchDepartments = async () => {
+    const { data } = await supabase.from('departments').select('name').order('name')
+    const deptNames = (data || []).map(d => d.name)
+    setDepartments(deptNames)
+  }
 
   const fetchData = async () => {
     const [rolesRes, appsRes] = await Promise.all([
@@ -50,13 +58,13 @@ export default function RolesManager() {
 
   const openAdd = () => {
     setEditingRole(null)
-    setForm(emptyForm)
+    setForm({ ...emptyForm, department: departments[0] || '' })
     setShowModal(true)
   }
 
   const openEdit = (role) => {
     setEditingRole(role)
-    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status, job_context: role.job_context || '' })
+    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status, job_context: role.job_context || '', location: role.location || 'Lombok', work_arrangement: role.work_arrangement || 'Onsite' })
     setShowModal(true)
   }
 
@@ -130,7 +138,7 @@ export default function RolesManager() {
           style={{ width: 'auto', minWidth: 160 }}
         >
           <option value="All">All Departments</option>
-          {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+          {departments.map(d => <option key={d}>{d}</option>)}
         </select>
         <select
           value={filterStatus}
@@ -214,6 +222,19 @@ export default function RolesManager() {
                         {copied === role.id ? <Check size={14} /> : <Link2 size={14} />}
                       </button>
                     )}
+                    <button
+                      onClick={() => {
+                        // Navigate to Job Creator — parent handles page switching
+                        const event = new CustomEvent('navigate-to', { detail: { page: 'jobcreator', roleId: role.id } })
+                        window.dispatchEvent(event)
+                      }}
+                      title="Open in Job Creator"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9A8F80', padding: 2, display: 'flex' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#4A7C74'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#9A8F80'}
+                    >
+                      <Wand2 size={14} />
+                    </button>
                     {deleteConfirm === role.id ? (
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button
@@ -279,7 +300,7 @@ export default function RolesManager() {
                     onChange={e => setForm({ ...form, department: e.target.value })}
                     className="form-control"
                   >
-                    {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+                    {departments.map(d => <option key={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -321,6 +342,26 @@ export default function RolesManager() {
                   <p className="form-hint" style={{ marginTop: 4 }}>
                     The more detail you add, the more targeted and role-specific the AI questions will be.
                   </p>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Location</label>
+                  <select
+                    value={form.location}
+                    onChange={e => setForm({ ...form, location: e.target.value })}
+                    className="form-control"
+                  >
+                    {LOCATIONS.map(l => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Work Arrangement</label>
+                  <select
+                    value={form.work_arrangement}
+                    onChange={e => setForm({ ...form, work_arrangement: e.target.value })}
+                    className="form-control"
+                  >
+                    {WORK_ARRANGEMENTS.map(wa => <option key={wa}>{wa}</option>)}
+                  </select>
                 </div>
               </div>
               <div className="modal-footer">

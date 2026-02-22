@@ -16,7 +16,7 @@
 import { supabase } from './supabase'
 
 export const PROMPT_VERSION = 'v1'
-export const MODEL_VERSION  = 'claude-sonnet-4-6'
+export const MODEL_VERSION = 'claude-sonnet-4-6'
 
 // ── Score helpers (shared with UI) ────────────────────────────────────────────
 
@@ -27,8 +27,8 @@ export const MODEL_VERSION  = 'claude-sonnet-4-6'
  */
 export function getScoreColor(score) {
   if (score == null) return 'var(--stone)'
-  if (score >= 80)   return 'var(--teal)'
-  if (score >= 60)   return 'var(--gold)'
+  if (score >= 80) return 'var(--teal)'
+  if (score >= 60) return 'var(--gold)'
   return 'var(--alert)'
 }
 
@@ -39,8 +39,8 @@ export function getScoreColor(score) {
  */
 export function getScoreBg(score) {
   if (score == null) return 'var(--sand)'
-  if (score >= 80)   return 'var(--teal-bg)'
-  if (score >= 60)   return 'var(--gold-bg)'
+  if (score >= 80) return 'var(--teal-bg)'
+  if (score >= 60) return 'var(--gold-bg)'
   return 'var(--alert-bg)'
 }
 
@@ -51,8 +51,8 @@ export function getScoreBg(score) {
  */
 export function getScoreLabel(score) {
   if (score == null) return 'Not Scored'
-  if (score >= 80)   return 'High Match'
-  if (score >= 60)   return 'Moderate'
+  if (score >= 80) return 'High Match'
+  if (score >= 60) return 'Moderate'
   return 'Low Match'
 }
 
@@ -62,26 +62,26 @@ export function getScoreLabel(score) {
  * @returns {string}
  */
 export function getSeverityColor(severity) {
-  if (severity === 'high')   return 'var(--alert)'
+  if (severity === 'high') return 'var(--alert)'
   if (severity === 'medium') return 'var(--gold)'
   return 'var(--stone)'
 }
 
 export function getSeverityBg(severity) {
-  if (severity === 'high')   return 'var(--alert-bg)'
+  if (severity === 'high') return 'var(--alert-bg)'
   if (severity === 'medium') return 'var(--gold-bg)'
   return 'var(--sand)'
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
-function buildPrompt(app, parsedCV) {
+function buildPrompt(app, parsedCV, scoringCriteria = null, weights = null) {
   const candidate = app.candidates
-  const role      = app.roles
+  const role = app.roles
 
   // ── Salary section ──
   const curr = parseInt(candidate.current_salary) || 0
-  const exp  = parseInt(candidate.expected_salary) || 0
+  const exp = parseInt(candidate.expected_salary) || 0
   const salaryPct = (curr > 0 && exp > 0)
     ? Math.round(((exp - curr) / curr) * 100)
     : null
@@ -89,7 +89,7 @@ function buildPrompt(app, parsedCV) {
   const salaryLine = (() => {
     if (curr && exp)
       return `Current Rp ${curr.toLocaleString('id-ID')}/mo → Expected Rp ${exp.toLocaleString('id-ID')}/mo` +
-             (salaryPct != null ? ` (${salaryPct > 0 ? '+' : ''}${salaryPct}% change)` : '')
+        (salaryPct != null ? ` (${salaryPct > 0 ? '+' : ''}${salaryPct}% change)` : '')
     if (exp)
       return `Expected Rp ${exp.toLocaleString('id-ID')}/mo (current undisclosed)`
     return 'Not provided'
@@ -119,6 +119,22 @@ ${role.job_context.trim()}`
     : `
 NO DETAILED JOB CONTEXT — infer requirements from role title "${role.title}" and department "${role.department}".`
 
+  // ── Structured scoring criteria section (augment mode) ──
+  const structuredCriteriaSection = scoringCriteria?.must_have_criteria?.length
+    ? `
+STRUCTURED SCORING CRITERIA (use these as your scoring checklist — they are extracted from the job description):
+MUST-HAVE CRITERIA:
+${scoringCriteria.must_have_criteria.map(c => `  - [${c.type.toUpperCase()}] ${c.criterion} (threshold: ${c.threshold})`).join('\n')}
+NICE-TO-HAVE CRITERIA:
+${(scoringCriteria.nice_to_have_criteria || []).map(c => `  - [${c.type.toUpperCase()}] ${c.criterion} (threshold: ${c.threshold})`).join('\n')}
+
+IMPORTANT: Score must_have_score against the MUST-HAVE list above. Score nice_to_have_score against the NICE-TO-HAVE list.
+Also scan the free-text job context above for behavioral traits, cultural fit, and soft requirements not captured in the structured list.`
+    : ''
+
+  // ── Dynamic weights ──
+  const w = weights || { must_have: 0.55, nice_to_have: 0.25, salary_alignment: 0.20 }
+
   return `You are a senior talent assessment AI for Samara Lombok, a premium hospitality, construction, and operations company in Lombok, Indonesia.
 
 Your task is to produce a structured compatibility evaluation of the candidate against the role. You must:
@@ -133,6 +149,7 @@ ROLE:
   Department: ${role.department}
   Priority:   ${role.priority}
 ${jobContextSection}
+${structuredCriteriaSection}
 
 CANDIDATE:
   Name:       ${candidate.full_name}
@@ -142,7 +159,7 @@ CANDIDATE:
 ${cvSection}
 
 SCORING RULES:
-- overall_score: weighted average — must_have_score × 0.55 + nice_to_have_score × 0.25 + salary_alignment_score × 0.20
+- overall_score: weighted average — must_have_score × ${w.must_have} + nice_to_have_score × ${w.nice_to_have} + salary_alignment_score × ${w.salary_alignment}
 - must_have_score: 0 if any hard non-negotiable is completely absent; scale 60–100 otherwise
 - nice_to_have_score: proportion of preferred criteria evidenced in profile
 - salary_alignment_score:
@@ -184,7 +201,7 @@ Rules:
 - interview_focus: 3–5 specific items (not generic). Each must reference an actual gap or risk identified above.
 - risk_flags: only include real, evidence-based flags. Empty array if genuinely no risks.
 - All scores must be integers between 0 and 100.
-- overall_score must equal: round(must_have_score × 0.55 + nice_to_have_score × 0.25 + salary_alignment_score × 0.20)`
+- overall_score must equal: round(must_have_score × ${w.must_have} + nice_to_have_score × ${w.nice_to_have} + salary_alignment_score × ${w.salary_alignment})`
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -194,14 +211,19 @@ Rules:
  *
  * @param {object} app          Full application record with app.candidates and app.roles joined
  * @param {object|null} parsedCV  Parsed CV data from cv_sources.parsed_data (or null)
+ * @param {object|null} scoringCriteria  Structured criteria from job_descriptions.scoring_criteria (or null)
+ * @param {object|null} weights  Per-role weights { must_have, nice_to_have, salary_alignment } (or null for defaults)
  * @returns {Promise<object>}   Score JSONB object to store in application_scores
  */
-export async function generateCompatibilityScore(app, parsedCV = null) {
+export async function generateCompatibilityScore(app, parsedCV = null, scoringCriteria = null, weights = null) {
+  // Read per-role weights if available
+  const roleWeights = weights || app.roles?.scoring_weights || null
+
   const { data, error } = await supabase.functions.invoke('claude-proxy', {
     body: {
-      model:      MODEL_VERSION,
+      model: MODEL_VERSION,
       max_tokens: 1500,
-      messages:   [{ role: 'user', content: buildPrompt(app, parsedCV) }],
+      messages: [{ role: 'user', content: buildPrompt(app, parsedCV, scoringCriteria, roleWeights) }],
     },
   })
 
@@ -218,15 +240,16 @@ export async function generateCompatibilityScore(app, parsedCV = null) {
   }
 
   // Enforce overall_score matches the weighting formula (in case Claude drifts)
+  const w = roleWeights || { must_have: 0.55, nice_to_have: 0.25, salary_alignment: 0.20 }
   if (
     parsed.must_have_score != null &&
     parsed.nice_to_have_score != null &&
     parsed.salary_alignment_score != null
   ) {
     parsed.overall_score = Math.round(
-      parsed.must_have_score        * 0.55 +
-      parsed.nice_to_have_score     * 0.25 +
-      parsed.salary_alignment_score * 0.20
+      parsed.must_have_score * w.must_have +
+      parsed.nice_to_have_score * w.nice_to_have +
+      parsed.salary_alignment_score * w.salary_alignment
     )
   }
 

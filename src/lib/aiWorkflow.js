@@ -14,13 +14,13 @@ import { supabase } from './supabase'
 import {
   generateCompatibilityScore,
   PROMPT_VERSION as SCORE_PROMPT_V,
-  MODEL_VERSION  as SCORE_MODEL,
+  MODEL_VERSION as SCORE_MODEL,
 } from './generateCompatibilityScore'
 import {
   generateScreeningQuestions,
   getApplicationRisks,
   PROMPT_VERSION as SQ_PROMPT_V,
-  MODEL_VERSION  as SQ_MODEL,
+  MODEL_VERSION as SQ_MODEL,
 } from './generateScreeningQuestions'
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
@@ -32,6 +32,17 @@ async function fetchFullApp(applicationId) {
     .eq('id', applicationId)
     .maybeSingle()
   return data
+}
+
+async function fetchScoringCriteria(roleId) {
+  const { data } = await supabase
+    .from('job_descriptions')
+    .select('scoring_criteria')
+    .eq('role_id', roleId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data?.scoring_criteria || null
 }
 
 async function fetchParsedCV(candidateId) {
@@ -79,20 +90,22 @@ export async function autoScore(applicationId) {
     if (!app) return
 
     const parsedCV = await fetchParsedCV(app.candidates.id)
-    const result   = await generateCompatibilityScore(app, parsedCV)
+    const scoringCriteria = await fetchScoringCriteria(app.roles.id)
+    const roleWeights = app.roles?.scoring_weights || null
+    const result = await generateCompatibilityScore(app, parsedCV, scoringCriteria, roleWeights)
 
     await supabase.from('application_scores').insert({
-      application_id:         applicationId,
-      overall_score:          result.overall_score,
-      must_have_score:        result.must_have_score,
-      nice_to_have_score:     result.nice_to_have_score,
+      application_id: applicationId,
+      overall_score: result.overall_score,
+      must_have_score: result.must_have_score,
+      nice_to_have_score: result.nice_to_have_score,
       salary_alignment_score: result.salary_alignment_score,
-      risk_flags:             result.risk_flags       || [],
-      executive_summary:      result.executive_summary || '',
-      interview_focus:        result.interview_focus  || [],
-      scored_by_name:         'System (Auto)',
-      model_version:          SCORE_MODEL,
-      prompt_version:         `${SCORE_PROMPT_V} · auto`,
+      risk_flags: result.risk_flags || [],
+      executive_summary: result.executive_summary || '',
+      interview_focus: result.interview_focus || [],
+      scored_by_name: 'System (Auto)',
+      model_version: SCORE_MODEL,
+      prompt_version: `${SCORE_PROMPT_V} · auto`,
     })
   } catch (err) {
     // Auto-scoring is non-fatal — recruiter can manually trigger from the tab
@@ -117,14 +130,14 @@ export async function autoGenerateQuestions(applicationId) {
     if (!app) return
 
     const questions = await generateScreeningQuestions(app)
-    const risks     = getApplicationRisks(app)
+    const risks = getApplicationRisks(app)
 
     await supabase.from('screening_questions').insert({
-      application_id:    applicationId,
+      application_id: applicationId,
       questions,
-      risk_areas:        risks.map(r => ({ label: r })),
-      prompt_version:    `${SQ_PROMPT_V} · auto`,
-      model_version:     SQ_MODEL,
+      risk_areas: risks.map(r => ({ label: r })),
+      prompt_version: `${SQ_PROMPT_V} · auto`,
+      model_version: SQ_MODEL,
       generated_by_name: 'System (Auto)',
     })
   } catch (err) {

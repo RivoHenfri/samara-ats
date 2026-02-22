@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Briefcase, Calculator,
-  LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon
+  LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon, Wand2
 } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
 
@@ -15,6 +15,7 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
     { id: 'pipeline', label: 'Pipeline', icon: Users, section: 'Recruitment' },
     { id: 'candidates', label: 'Candidates', icon: Briefcase, section: null },
     { id: 'roles', label: 'Roles', icon: ClipboardList, section: null },
+    { id: 'jobcreator', label: 'Job Creator', icon: Wand2, section: null },
     { id: 'tcow', label: 'TCOW Calculator', icon: Calculator, section: 'Analytics' },
     { id: 'analytics', label: 'Analytics', icon: BarChart2, section: null },
     { id: 'import', label: 'Import', icon: Upload, section: 'Tools' },

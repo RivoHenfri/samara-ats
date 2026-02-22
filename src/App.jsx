@@ -14,6 +14,7 @@ import UsersPage from './pages/UsersPage'
 import IntegrationsManager from './pages/IntegrationsManager'
 import CandidateSchedulingPortal from './pages/CandidateSchedulingPortal'
 import OAuthCallback from './pages/OAuthCallback'
+import JobCreatorPage from './pages/JobCreatorPage'
 
 function MainWorkspace() {
   const { user } = useAuth()
@@ -31,6 +32,7 @@ function MainWorkspace() {
     import: <Import />,
     users: <UsersPage />,
     integrations: <IntegrationsManager />,
+    jobcreator: <JobCreatorPage />,
   }
 
   return (
