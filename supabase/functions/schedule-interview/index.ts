@@ -225,18 +225,16 @@ serve(async (req) => {
             warnings.push('microsoft_error')
         }
 
-        // 5. Update interview record
-        await supabase
+        // 5. Update interview record with Zoom meeting link
+        const { error: updateErr } = await supabase
             .from('interviews')
-            .update({
-                status: 'scheduled',
-                scheduled_at: scheduledAt.toISOString(),
-                end_at: endAt.toISOString(),
-                meeting_link: meetingLink,
-                calendar_event_id: calendarEventId,
-                zoom_meeting_id: zoomMeetingId,
-            })
+            .update({ meeting_link: meetingLink })
             .eq('id', interview_id)
+
+        if (updateErr) {
+            console.error('Failed to save meeting_link:', updateErr.message)
+            warnings.push('meeting_link_save_failed')
+        }
 
         // 6. Update application stage
         await supabase
