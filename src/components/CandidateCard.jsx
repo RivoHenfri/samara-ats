@@ -108,22 +108,25 @@ export default function CandidateCard({ app, onDragStart, selected, onSelect }) 
   useEffect(() => { fetchNoteCount(); fetchScore() }, [app.id])
 
   const fetchNoteCount = async () => {
-    const { count } = await supabase
-      .from('notes')
-      .select('id', { count: 'exact' })
-      .eq('application_id', app.id)
-    setNoteCount(count || 0)
+    try {
+      const { count } = await supabase
+        .from('notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('application_id', app.id)
+      setNoteCount(count || 0)
+    } catch { /* non-fatal */ }
   }
 
   const fetchScore = async () => {
-    const { data } = await supabase
-      .from('application_scores')
-      .select('overall_score')
-      .eq('application_id', app.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    setScore(data?.overall_score ?? null)
+    try {
+      const { data } = await supabase
+        .from('application_scores')
+        .select('overall_score, created_at')
+        .eq('application_id', app.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      setScore(data?.[0]?.overall_score ?? null)
+    } catch { /* non-fatal */ }
   }
 
   return (

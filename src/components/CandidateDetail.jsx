@@ -139,8 +139,10 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
     const newStage = editData.stage
     setSavingEdit(true)
     try {
+      const appUpdate = { stage: newStage }
+      if (editData.role_id) appUpdate.role_id = editData.role_id   // guard: never send empty string for UUID column
       await supabase.from('applications')
-        .update({ stage: newStage, role_id: editData.role_id })
+        .update(appUpdate)
         .eq('id', app.id)
       await supabase.from('candidates').update({
         whatsapp: editData.whatsapp,
@@ -156,7 +158,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       // ── Auto-trigger AI on stage transition (fire-and-forget) ──
       if (newStage === 'Screening' && prevStage !== 'Screening') {
         autoScore(app.id)
-      } else if (newStage === 'Interview' && prevStage !== 'Interview') {
+      } else if (newStage.startsWith('Interview') && !prevStage.startsWith('Interview')) {
         autoGenerateQuestions(app.id)
       }
     } catch (err) {
@@ -324,7 +326,7 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
           }}>
             CV
           </p>
-          <CVSourcePanel candidateId={candidate?.id} canEdit={isManager} />
+          <CVSourcePanel candidateId={candidate?.id} canEdit={isManager} onUpdated={onUpdated} />
         </div>
 
         {/* ── Tabs ── */}
