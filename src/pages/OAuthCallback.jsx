@@ -43,20 +43,34 @@ export default function OAuthCallback() {
         try {
             const redirectUri = `${window.location.origin}/auth/${provider}/callback`
 
-            // Force-refresh the session to get a valid JWT before calling the edge function
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-            if (sessionError || !session) {
+            // Force-refresh the session to guarantee a non-expired JWT
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+            const session = refreshData?.session
+            if (refreshError || !session) {
                 throw new Error('Session expired. Please log in again and retry.')
             }
 
-            const { data, error } = await supabase.functions.invoke('oauth-callback', {
-                body: { provider, code, redirectUri },
+            // Use raw fetch instead of supabase.functions.invoke to guarantee
+            // the correct Authorization header is sent without any SDK interference
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+            const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+            const response = await fetch(`${supabaseUrl}/functions/v1/oauth-callback`, {
+                method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${session.access_token}`,
                 },
+                body: JSON.stringify({ provider, code, redirectUri }),
             })
 
-            if (error) throw error
+            if (!response.ok) {
+                const errBody = await response.text()
+                throw new Error(`Edge Function error (${response.status}): ${errBody}`)
+            }
+
+            const data = await response.json()
             if (data?.error) throw new Error(data.error)
 
             setStatus('success')
