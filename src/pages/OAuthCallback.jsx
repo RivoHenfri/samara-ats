@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
@@ -12,6 +12,7 @@ export default function OAuthCallback() {
 
     const [status, setStatus] = useState('loading')
     const [errorMsg, setErrorMsg] = useState('')
+    const exchangeStarted = useRef(false)
 
     useEffect(() => {
         // Wait for auth session to fully restore before doing anything
@@ -31,23 +32,34 @@ export default function OAuthCallback() {
             return
         }
 
+        // Guard: only call exchangeCode once (React effects can re-fire)
+        if (exchangeStarted.current) return
+        exchangeStarted.current = true
+
         exchangeCode(code)
     }, [provider, searchParams, user, authLoading])
 
     const exchangeCode = async (code) => {
         try {
-            // The exact same redirect URI that we sent during the auth request
             const redirectUri = `${window.location.origin}/auth/${provider}/callback`
 
+            // Force-refresh the session to get a valid JWT before calling the edge function
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+            if (sessionError || !session) {
+                throw new Error('Session expired. Please log in again and retry.')
+            }
+
             const { data, error } = await supabase.functions.invoke('oauth-callback', {
-                body: { provider, code, redirectUri }
+                body: { provider, code, redirectUri },
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
             })
 
             if (error) throw error
             if (data?.error) throw new Error(data.error)
 
             setStatus('success')
-            // Redirect back to dashboard after 2 seconds
             setTimeout(() => {
                 navigate('/', { replace: true })
             }, 2000)
@@ -56,6 +68,7 @@ export default function OAuthCallback() {
             console.error('OAuth Exchange Error:', err)
             setStatus('error')
             setErrorMsg(err.message || 'Failed to exchange authorization code.')
+            exchangeStarted.current = false // allow retry
         }
     }
 
