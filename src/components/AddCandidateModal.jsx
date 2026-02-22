@@ -56,14 +56,21 @@ async function extractCVWithClaude(base64PDF, retries = 3) {
     })
 
     // Rate limit — retry with exponential backoff
-    if (error?.message?.includes('429') || error?.message?.includes('Too Many') ||
-      data?.error?.type === 'rate_limit_error') {
+    // Supabase wraps non-2xx as generic "Edge Function returned a non-2xx status code"
+    // so we check error.context.status for the actual HTTP code
+    const isRateLimit = error?.context?.status === 429 ||
+      error?.message?.includes('429') ||
+      error?.message?.includes('Too Many') ||
+      error?.message?.includes('non-2xx') ||
+      data?.error?.type === 'rate_limit_error'
+
+    if (isRateLimit && error) {
       if (attempt < retries - 1) {
         const delay = Math.pow(2, attempt + 1) * 1000 // 2s, 4s, 8s
         await new Promise(r => setTimeout(r, delay))
         continue
       }
-      throw new Error('AI rate limit reached. Please wait a moment and try again.')
+      throw new Error('AI rate limit reached. Please wait 30 seconds and try again.')
     }
 
     if (error) throw new Error(error.message || 'Claude proxy error')
