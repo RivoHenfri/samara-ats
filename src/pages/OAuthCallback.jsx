@@ -43,15 +43,6 @@ export default function OAuthCallback() {
         try {
             const redirectUri = `${window.location.origin}/auth/${provider}/callback`
 
-            // Force-refresh the session to guarantee a non-expired JWT
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-            const session = refreshData?.session
-            if (refreshError || !session) {
-                throw new Error('Session expired. Please log in again and retry.')
-            }
-
-            // Use raw fetch instead of supabase.functions.invoke to guarantee
-            // the correct Authorization header is sent without any SDK interference
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
             const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -60,9 +51,9 @@ export default function OAuthCallback() {
                 headers: {
                     'Content-Type': 'application/json',
                     'apikey': anonKey,
-                    'Authorization': `Bearer ${session.access_token}`,
+                    'Authorization': `Bearer ${anonKey}`,
                 },
-                body: JSON.stringify({ provider, code, redirectUri }),
+                body: JSON.stringify({ provider, code, redirectUri, user_id: user.id }),
             })
 
             if (!response.ok) {

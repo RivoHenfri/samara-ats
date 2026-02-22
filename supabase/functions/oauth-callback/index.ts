@@ -12,27 +12,16 @@ serve(async (req) => {
     }
 
     try {
-        const { provider, code, redirectUri } = await req.json()
+        const { provider, code, redirectUri, user_id } = await req.json()
 
         // Validate request
-        if (!provider || !code || !redirectUri) {
+        if (!provider || !code || !redirectUri || !user_id) {
             throw new Error('Missing required fields')
         }
 
-        // Get Auth token from headers to know who the user is
-        const authHeader = req.headers.get('Authorization')
-        if (!authHeader) throw new Error('Missing Authorization header')
-
-        // Create Supabase client and get user
+        // Setup Supabase clients
         const supabaseUrl = Deno.env.get('SUPABASE_URL')
-        const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')
         const supabaseServerKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-        const userClient = createClient(supabaseUrl, supabaseKey, {
-            global: { headers: { Authorization: authHeader } }
-        })
-
-        const { data: { user }, error: userError } = await userClient.auth.getUser()
-        if (userError || !user) throw new Error('Unauthorized')
 
         let accessToken, refreshToken, expiresAt
 
@@ -106,7 +95,7 @@ serve(async (req) => {
         const { error: upsertError } = await adminClient
             .from('user_integrations')
             .upsert({
-                user_id: user.id,
+                user_id: user_id,
                 provider: provider,
                 access_token: accessToken,
                 refresh_token: refreshToken,
