@@ -79,10 +79,16 @@ export default function RolesManager() {
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
+    // Convert empty optional fields to null to satisfy DB check constraints
+    const payload = {
+      ...form,
+      role_type: form.role_type || null,
+      job_context: form.job_context || null,
+    }
     if (editingRole) {
-      await supabase.from('roles').update(form).eq('id', editingRole.id)
+      await supabase.from('roles').update(payload).eq('id', editingRole.id)
     } else {
-      await supabase.from('roles').insert(form)
+      await supabase.from('roles').insert(payload)
     }
     setSaving(false)
     setShowModal(false)
