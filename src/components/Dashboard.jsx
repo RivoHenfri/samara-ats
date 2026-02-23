@@ -106,10 +106,10 @@ export default function Dashboard({ setCurrentPage }) {
   const hiredCount = hiredThisPeriod.length
   const avgDaysToHire = hiredThisPeriod.length > 0
     ? Math.round(
-        hiredThisPeriod.reduce((sum, a) => {
-          return sum + (new Date(a.updated_at) - new Date(a.created_at)) / (1000 * 60 * 60 * 24)
-        }, 0) / hiredThisPeriod.length
-      )
+      hiredThisPeriod.reduce((sum, a) => {
+        return sum + (new Date(a.updated_at) - new Date(a.created_at)) / (1000 * 60 * 60 * 24)
+      }, 0) / hiredThisPeriod.length
+    )
     : null
 
   // ── Stat cards ──
@@ -156,7 +156,7 @@ export default function Dashboard({ setCurrentPage }) {
   )
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* ── Topbar ── */}
       <div className="topbar" style={{ flexWrap: 'wrap', gap: 8 }}>
         <h1 className="page-title">Dashboard</h1>
