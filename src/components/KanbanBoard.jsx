@@ -8,7 +8,7 @@ import { Plus, Search, RotateCcw, X } from 'lucide-react'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import { checkStagnation, groupByStage, STAGE_NEXT_ACTION } from '../lib/stagnationMonitor'
 
-const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
+const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer']
 const departments = ['Hospitality', 'Operations', 'Construction']
 const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
@@ -20,8 +20,6 @@ const colClass = {
   'Interview Scheduled': 'k-col-interview',
   'Interview Completed': 'k-col-interview',
   Offer: 'k-col-offer',
-  Hired: 'k-col-hired',
-  Rejected: 'k-col-rejected',
 }
 
 export default function KanbanBoard() {
@@ -56,6 +54,7 @@ export default function KanbanBoard() {
     let query = supabase
       .from('applications')
       .select('*, candidates!inner(*), roles!inner(*)')
+      .in('stage', STAGES) // Only fetch active pipeline stages
       .order('created_at', { ascending: false })
 
     // Apply Filters
@@ -196,8 +195,10 @@ export default function KanbanBoard() {
   }
 
   const handleBulkReject = async () => {
-    if (!window.confirm(`Are you sure you want to reject ${selectedIds.length} candidate(s)?`)) return
-    await supabase.from('applications').update({ stage: 'Rejected' }).in('id', selectedIds)
+    const reason = window.prompt(`Are you sure you want to reject ${selectedIds.length} candidate(s)? \n\nPlease provide a Rejection Reason Code (e.g., Salary Mismatch, Lacks Remote Resilience, Timing, Role Filled, Not a Culture Fit, Other):`)
+    if (reason === null) return // User cancelled
+
+    await supabase.from('applications').update({ stage: 'Rejected', rejection_reason: reason || 'Not Specified' }).in('id', selectedIds)
     const appsToMessage = applications.filter(a => selectedIds.includes(a.id) && a.candidates?.whatsapp)
     if (appsToMessage.length > 0) {
       setBulkMessaging({ apps: appsToMessage, currentIndex: 0, lang: 'id', stage: 'Rejected' })

@@ -6,7 +6,8 @@ import CandidateDetail from './CandidateDetail'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import { ScoreBadge } from './CompatibilityScore'
 
-const stages = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
+const activeStages = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer']
+const archiveStages = ['Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
 const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
@@ -101,6 +102,7 @@ export default function CandidatesList() {
   const deptFilters = searchParams.get('depts')?.split(',').filter(Boolean) || []
   const stageFilters = searchParams.get('stages')?.split(',').filter(Boolean) || []
   const originFilters = searchParams.get('origins')?.split(',').filter(Boolean) || []
+  const archiveView = searchParams.get('archive') === '1'
   const highMatch = searchParams.get('highMatch') === '1'
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = 20
@@ -160,6 +162,8 @@ export default function CandidatesList() {
 
     if (stageFilters.length > 0) {
       query = query.in('stage', stageFilters)
+    } else {
+      query = query.in('stage', archiveView ? archiveStages : activeStages)
     }
 
     if (originFilters.length > 0) {
@@ -217,6 +221,10 @@ export default function CandidatesList() {
       }
     } else {
       nextParams.delete(key)
+    }
+    // Specific logic for archive toggle vs stage filters: clear stage filters if switching views
+    if (key === 'archive') {
+      nextParams.delete('stages')
     }
     nextParams.set('page', '1') // Reset to page 1 on filter change
     setSearchParams(nextParams)
@@ -284,8 +292,10 @@ export default function CandidatesList() {
   }
 
   const handleBulkReject = async () => {
-    if (!window.confirm(`Are you sure you want to reject ${selectedIds.length} candidate(s)?`)) return
-    await supabase.from('applications').update({ stage: 'Rejected' }).in('id', selectedIds)
+    const reason = window.prompt(`Are you sure you want to reject ${selectedIds.length} candidate(s)? \n\nPlease provide a Rejection Reason Code (e.g., Salary Mismatch, Lacks Remote Resilience, Timing, Role Filled, Not a Culture Fit, Other):`)
+    if (reason === null) return // User cancelled
+
+    await supabase.from('applications').update({ stage: 'Rejected', rejection_reason: reason || 'Not Specified' }).in('id', selectedIds)
     const appsToMessage = applications.filter(a => selectedIds.includes(a.id) && a.candidates?.whatsapp)
     if (appsToMessage.length > 0) {
       setBulkMessaging({ apps: appsToMessage, currentIndex: 0, lang: 'id', stage: 'Rejected' })
@@ -328,6 +338,20 @@ export default function CandidatesList() {
             <Zap size={12} /> High Match (80+)
           </button>
           <button
+            onClick={() => {
+              const next = new URLSearchParams(searchParams)
+              if (archiveView) next.delete('archive')
+              else next.set('archive', '1')
+              next.delete('stages') // clear stage filter when toggling
+              next.set('page', '1')
+              setSearchParams(next)
+            }}
+            className={`btn btn-sm ${archiveView ? 'btn-teal' : 'btn-ghost'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            🗄️ Archive View
+          </button>
+          <button
             onClick={() => updateFilters('origins', originFilters.includes('Lombok Local') ? originFilters.filter(o => o !== 'Lombok Local') : [...originFilters, 'Lombok Local'])}
             className={`btn btn-sm ${originFilters.includes('Lombok Local') ? 'btn-teal' : 'btn-ghost'}`}
           >
@@ -368,7 +392,7 @@ export default function CandidatesList() {
 
             <MultiSelectDropdown
               label="Stage"
-              options={stages.map(s => ({ label: s, value: s }))}
+              options={(archiveView ? archiveStages : activeStages).map(s => ({ label: s, value: s }))}
               selectedValues={stageFilters}
               onChange={vals => updateFilters('stages', vals)}
             />
@@ -504,6 +528,8 @@ export default function CandidatesList() {
                 <th>Stage</th>
                 <th>Origin</th>
                 <th>Score</th>
+                {archiveView && <th>Reason Code</th>}
+                <th>Suitability</th>
                 <th>Current Salary</th>
                 <th>Expected Salary</th>
                 <th>CV</th>
@@ -571,6 +597,35 @@ export default function CandidatesList() {
                     </td>
                     <td onClick={e => e.stopPropagation()}>
                       <ScoreBadge score={scores[app.id] ?? null} size="sm" />
+                    </td>
+                    {archiveView && (
+                      <td>
+                        {app.stage === 'Rejected' ? (
+                          <span style={{ fontSize: 11, color: 'var(--alert)', background: 'rgba(192,97,74,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                            {app.rejection_reason || 'Not Specified'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--teal)', background: 'rgba(74,124,116,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                            Hired
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    <td>
+                      {app.candidates?.suitability_score != null ? (
+                        <span style={{
+                          display: 'inline-flex', padding: '2px 7px', borderRadius: 10,
+                          fontSize: 10.5, fontWeight: 600,
+                          background: app.candidates.suitability_score >= 20 ? 'rgba(74,124,116,0.12)'
+                            : app.candidates.suitability_score >= 10 ? 'rgba(184,150,90,0.12)' : 'rgba(154,143,128,0.12)',
+                          color: app.candidates.suitability_score >= 20 ? 'var(--teal)'
+                            : app.candidates.suitability_score >= 10 ? 'var(--gold)' : 'var(--stone)',
+                        }}>
+                          {app.candidates.suitability_score}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--stone-light)', fontSize: 11 }}>—</span>
+                      )}
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
                       {displayIDR(app.candidates?.current_salary)}

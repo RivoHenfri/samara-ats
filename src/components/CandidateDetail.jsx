@@ -62,6 +62,34 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
     if (app) { fetchNotes(); fetchRoles(); fetchLatestScore() }
   }, [app])
 
+  const handleHire = async () => {
+    if (!window.confirm('Are you sure you want to mark this candidate as Hired? They will be moved to the HR module.')) return
+
+    setSavingEdit(true)
+    const { error } = await supabase.from('applications').update({ stage: 'Hired' }).eq('id', app.id)
+    if (!error) {
+      if (onUpdated) onUpdated()
+      onClose()
+    }
+    setSavingEdit(false)
+  }
+
+  const handleReject = async () => {
+    const reason = window.prompt('Please provide a Rejection Reason Code (e.g., Salary Mismatch, Lacks Remote Resilience, Timing, Role Filled, Not a Culture Fit, Other):')
+    if (reason === null) return // User cancelled
+
+    setSavingEdit(true)
+    const { error } = await supabase.from('applications')
+      .update({ stage: 'Rejected', rejection_reason: reason || 'Not Specified' })
+      .eq('id', app.id)
+
+    if (!error) {
+      if (onUpdated) onUpdated()
+      onClose()
+    }
+    setSavingEdit(false)
+  }
+
   // ── Real-time subscriptions ─────────────────────────────────────
   useEffect(() => {
     if (!app) return
@@ -208,6 +236,27 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
                     {isLombok ? '🌴 Lombok Local' : '📍 Outside Lombok'}
                   </span>
                 </div>
+
+                {!['Hired', 'Rejected'].includes(app.stage) && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button
+                      onClick={handleHire}
+                      disabled={savingEdit}
+                      className="btn btn-sm"
+                      style={{ background: 'var(--teal)', color: 'white', border: 'none' }}
+                    >
+                      Hire Candidate
+                    </button>
+                    <button
+                      onClick={handleReject}
+                      disabled={savingEdit}
+                      className="btn btn-sm"
+                      style={{ background: 'white', color: 'var(--alert)', border: '1px solid var(--alert)' }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -329,6 +378,23 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
             <InfoRow label="Applied" value={format(new Date(app.created_at), 'dd MMM yyyy')} />
             <InfoRow label="Current Salary" value={displayIDR(candidate?.current_salary)} />
             <InfoRow label="Expected Salary" value={displayIDR(candidate?.expected_salary)} />
+            {candidate?.suitability_score != null && (
+              <InfoRow label="Suitability Score" value={
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                  background: candidate.suitability_score >= 20 ? 'rgba(74,124,116,0.12)'
+                    : candidate.suitability_score >= 10 ? 'rgba(184,150,90,0.12)' : 'rgba(154,143,128,0.12)',
+                  color: candidate.suitability_score >= 20 ? 'var(--teal)'
+                    : candidate.suitability_score >= 10 ? 'var(--gold)' : 'var(--stone)',
+                }}>
+                  {candidate.suitability_score}
+                </span>
+              } />
+            )}
+            {candidate?.availability_to_start && (
+              <InfoRow label="Availability" value={candidate.availability_to_start} />
+            )}
           </div>
         )}
 
