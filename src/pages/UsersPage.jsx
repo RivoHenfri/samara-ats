@@ -1,50 +1,95 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-
-const ROLES = ['Admin', 'Manager', 'Viewer']
+import { useRBAC } from '../contexts/RBACContext'
 
 export default function UsersPage() {
-  const { isAdmin, profile: myProfile } = useAuth()
-  const [users,       setUsers]       = useState([])
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole,  setInviteRole]  = useState('Viewer')
-  const [inviteName,  setInviteName]  = useState('')
-  const [sending,     setSending]     = useState(false)
-  const [message,     setMessage]     = useState('')
+  const { profile: myProfile } = useAuth()
+  const { hasPermission } = useRBAC()
 
-  const fetchUsers = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('created_at')
-    if (data) setUsers(data)
+  const [users, setUsers] = useState([])
+  const [availableRoles, setAvailableRoles] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('') // This will now hold a UUID
+  const [inviteName, setInviteName] = useState('')
+  const [sending, setSending] = useState(false)
+  const [message, setMessage] = useState('')
+
+  // Check if current user is allowed to manage roles
+  const canManageSettings = hasPermission('settings', 'manage')
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      // 1. Fetch the exact list of RBAC roles from the database
+      const { data: rolesData, error: rolesError } = await supabase.rpc('get_available_roles')
+      if (rolesError) throw rolesError
+      setAvailableRoles(rolesData || [])
+
+      // Set default invite role to the lowest permission level (Viewer) if available
+      const viewerRole = rolesData?.find(r => r.name.includes('Viewer'))
+      if (viewerRole) setInviteRole(viewerRole.id)
+
+      // 2. Fetch the complex user list using the RPC
+      const { data: usersData, error: usersError } = await supabase.rpc('get_all_users_with_roles')
+      if (usersError) throw usersError
+      setUsers(usersData || [])
+
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => {
+    if (canManageSettings) fetchData()
+  }, [canManageSettings])
 
   const handleInvite = async (e) => {
     e.preventDefault()
     setSending(true)
     setMessage('')
+
+    // We pass the new UUID based role through raw_app_meta_data
+    const selectedRoleName = availableRoles.find(r => r.id === inviteRole)?.name || 'Viewer'
+
     const { error } = await supabase.auth.signInWithOtp({
       email: inviteEmail,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: inviteName, role: inviteRole }
+        // The edge function or SQL should listen for this mapping later
+        data: { full_name: inviteName, role: selectedRoleName }
       }
     })
+
     if (error) setMessage('Error: ' + error.message)
-    else setMessage(`Invite sent to ${inviteEmail} as ${inviteRole}`)
+    else setMessage(`Invite sent to ${inviteEmail}`)
+
     setInviteEmail('')
     setInviteName('')
     setSending(false)
-    setTimeout(fetchUsers, 2000)
   }
 
-  const updateRole = async (userId, newRole) => {
-    await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
-    fetchUsers()
+  const updateRole = async (userId, newRoleId) => {
+    try {
+      const { error } = await supabase.rpc('assign_user_role', {
+        target_user_id: userId,
+        target_role_id: newRoleId
+      })
+
+      if (error) throw error
+
+      // Update UI optimistically or refetch
+      fetchData()
+    } catch (err) {
+      alert("Error updating role: " + err.message)
+    }
   }
 
-  if (!isAdmin) {
+  if (!canManageSettings) {
     return (
       <div>
         <div className="topbar">
@@ -58,6 +103,8 @@ export default function UsersPage() {
       </div>
     )
   }
+
+  if (loading) return <div className="p-8 text-stone-400">Loading user matrix...</div>
 
   return (
     <div>
@@ -103,7 +150,8 @@ export default function UsersPage() {
                   onChange={e => setInviteRole(e.target.value)}
                   className="form-control"
                 >
-                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  <option value="" disabled>Select a role...</option>
+                  {availableRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <button
@@ -151,21 +199,22 @@ export default function UsersPage() {
                   <td>
                     {u.id === myProfile?.id ? (
                       <span className="stage-badge stage-hired">
-                        {u.role} (you)
+                        {u.role_name} (you)
                       </span>
                     ) : (
                       <select
-                        value={u.role}
+                        value={u.role_id || ''}
                         onChange={e => updateRole(u.id, e.target.value)}
                         className="form-control"
                         style={{ width: 'auto', padding: '3px 26px 3px 8px', fontSize: 11 }}
                       >
-                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        <option value="" disabled>Unassigned</option>
+                        {availableRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                       </select>
                     )}
                   </td>
                   <td style={{ fontSize: 11, color: 'var(--stone)' }}>
-                    {new Date(u.created_at).toLocaleDateString('id-ID')}
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID') : '—'}
                   </td>
                 </tr>
               ))}
