@@ -128,42 +128,76 @@ CREATE POLICY "Tenant Candidates Update" ON public.candidates FOR UPDATE TO auth
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'candidates', 'update'))
     WITH CHECK (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'candidates', 'update'));
 
+
+-- Candidates Delete
 DROP POLICY IF EXISTS "Tenant Candidates Delete" ON public.candidates;
 CREATE POLICY "Tenant Candidates Delete" ON public.candidates FOR DELETE TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'candidates', 'delete'));
 
--- Applications
+-- Applications Read
 DROP POLICY IF EXISTS "Tenant Applications Read" ON public.applications;
 CREATE POLICY "Tenant Applications Read" ON public.applications FOR SELECT TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'applications', 'read'));
 
+-- Applications Insert
 DROP POLICY IF EXISTS "Tenant Applications Insert" ON public.applications;
 CREATE POLICY "Tenant Applications Insert" ON public.applications FOR INSERT TO authenticated
     WITH CHECK (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'applications', 'insert'));
 
+-- Applications Update
 DROP POLICY IF EXISTS "Tenant Applications Update" ON public.applications;
 CREATE POLICY "Tenant Applications Update" ON public.applications FOR UPDATE TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'applications', 'update'))
     WITH CHECK (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'applications', 'update'));
 
+-- Applications Delete
 DROP POLICY IF EXISTS "Tenant Applications Delete" ON public.applications;
 CREATE POLICY "Tenant Applications Delete" ON public.applications FOR DELETE TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'applications', 'delete'));
 
--- Roles
+-- Roles Read
 DROP POLICY IF EXISTS "Tenant Roles Read" ON public.roles;
 CREATE POLICY "Tenant Roles Read" ON public.roles FOR SELECT TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'roles', 'read'));
 
+-- Roles Insert
 DROP POLICY IF EXISTS "Tenant Roles Insert" ON public.roles;
 CREATE POLICY "Tenant Roles Insert" ON public.roles FOR INSERT TO authenticated
     WITH CHECK (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'roles', 'insert'));
 
+-- Roles Update
 DROP POLICY IF EXISTS "Tenant Roles Update" ON public.roles;
 CREATE POLICY "Tenant Roles Update" ON public.roles FOR UPDATE TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'roles', 'update'))
     WITH CHECK (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'roles', 'update'));
 
+-- Roles Delete
 DROP POLICY IF EXISTS "Tenant Roles Delete" ON public.roles;
 CREATE POLICY "Tenant Roles Delete" ON public.roles FOR DELETE TO authenticated
     USING (tenant_id = public.current_tenant_id() AND rbac.has_permission(auth.uid(), 'roles', 'delete'));
+
+-- ==============================================================================
+-- 7. Assign Super Admin to user: satya@samaralombok.com
+-- ==============================================================================
+
+DO $$
+DECLARE
+    target_user_id UUID;
+    super_admin_role_id UUID;
+BEGIN
+    -- Find the user ID based on the email
+    SELECT id INTO target_user_id FROM auth.users WHERE email = 'satya@samaralombok.com' LIMIT 1;
+    
+    -- Find the Super Admin role ID
+    SELECT id INTO super_admin_role_id FROM rbac.roles WHERE name = 'Super Admin' LIMIT 1;
+
+    -- Only insert if the user actually exists in the Auth table
+    IF target_user_id IS NOT NULL AND super_admin_role_id IS NOT NULL THEN
+        INSERT INTO rbac.user_roles (user_id, role_id, tenant_id)
+        VALUES (
+            target_user_id, 
+            super_admin_role_id, 
+            '00000000-0000-0000-0000-000000000001' -- Default Samara Lombok Tenant
+        ) ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
