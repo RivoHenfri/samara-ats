@@ -53,20 +53,46 @@ export default function UsersPage() {
     setSending(true)
     setMessage('')
 
-    // We pass the new UUID based role through raw_app_meta_data
     const selectedRoleName = availableRoles.find(r => r.id === inviteRole)?.name || 'Viewer'
 
+    // We strictly use 'Viewer' for the legacy `role` field to bypass 
+    // any existing database check constraints on the profiles table
     const { error } = await supabase.auth.signInWithOtp({
       email: inviteEmail,
       options: {
         emailRedirectTo: window.location.origin,
         // The edge function or SQL should listen for this mapping later
-        data: { full_name: inviteName, role: selectedRoleName }
+        data: { full_name: inviteName, role: 'Viewer', rbac_role: selectedRoleName }
       }
     })
 
-    if (error) setMessage('Error: ' + error.message)
-    else setMessage(`Invite sent to ${inviteEmail}`)
+    if (error) {
+      setMessage('Error: ' + error.message)
+      setSending(false)
+      return
+    }
+
+    // Attempt to automatically assign their actual RBAC role explicitly via RPC
+    // Adding a slight delay to allow the Supabase auth trigger to finish making the user row first
+    setTimeout(async () => {
+      try {
+        const { data: usersData } = await supabase.rpc('get_all_users_with_roles')
+        const newlyInvitedUser = usersData?.find(u => u.email === inviteEmail)
+
+        if (newlyInvitedUser && inviteRole) {
+          await supabase.rpc('assign_user_role', {
+            target_user_id: newlyInvitedUser.id,
+            target_role_id: inviteRole
+          })
+          // Refresh table to show their actual role
+          fetchData()
+        }
+      } catch (err) {
+        console.error("Failed to automatically assign RBAC:", err)
+      }
+    }, 2000)
+
+    setMessage(`Invite sent to ${inviteEmail}`)
 
     setInviteEmail('')
     setInviteName('')
