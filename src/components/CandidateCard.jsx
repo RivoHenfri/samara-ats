@@ -175,7 +175,21 @@ export default function CandidateCard({ app, onDragStart, selected, onSelect }) 
           )}
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {/* Score badge */}
+            {/* Suitability score from form */}
+            {app.candidates?.suitability_score != null && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', padding: '1px 5px', borderRadius: 8,
+                fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+                background: app.candidates.suitability_score >= 20 ? 'rgba(74,124,116,0.12)'
+                  : app.candidates.suitability_score >= 10 ? 'rgba(184,150,90,0.12)' : 'rgba(154,143,128,0.12)',
+                color: app.candidates.suitability_score >= 20 ? 'var(--teal)'
+                  : app.candidates.suitability_score >= 10 ? 'var(--gold)' : 'var(--stone)',
+              }}>
+                FORM: {app.candidates.suitability_score}
+              </span>
+            )}
+
+            {/* AI Score badge */}
             {score != null && score !== undefined && (
               <ScoreBadge score={score} size="sm" />
             )}

@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Plus, Pencil, Trash2, X, Check, Link2, Wand2 } from 'lucide-react'
 
-const PRIORITIES = ['Critical', 'Core', 'Support']
+const PRIORITIES = ['Core', 'Support']
+const PRIORITY_LEVELS = ['Normal', 'Low', 'Urgent']
 const ROLE_TYPES = ['Replacement', 'New Position', 'Additional Headcount']
 const LOCATIONS = ['Lombok', 'Bali', 'Jakarta', 'Surabaya', 'Bandung', 'Yogyakarta', 'Other Indonesia', 'International']
 const WORK_ARRANGEMENTS = ['Onsite', 'Remote', 'Hybrid']
 
 const priorityStyle = {
-  Critical: { background: 'rgba(192,97,74,0.12)', color: '#C0614A' },
   Core: { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
   Support: { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' },
+}
+
+const priorityLevelStyle = {
+  Urgent: { background: 'rgba(192,97,74,0.12)', color: '#C0614A' },
+  Normal: { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  Low: { background: 'rgba(154,143,128,0.12)', color: '#9A8F80' },
 }
 
 const roleTypeStyle = {
@@ -25,7 +31,7 @@ const deptStyle = {
   Construction: { background: 'rgba(44,42,39,0.08)', color: '#2C2A27' },
 }
 
-const emptyForm = { title: '', department: '', priority: 'Core', status: 'Open', role_type: '', job_context: '', location: 'Lombok', work_arrangement: 'Onsite' }
+const emptyForm = { title: '', department: '', priority: 'Core', priority_level: 'Normal', status: 'Open', role_type: '', job_context: '', location: 'Lombok', work_arrangement: 'Onsite' }
 
 export default function RolesManager() {
   const [roles, setRoles] = useState([])
@@ -72,7 +78,7 @@ export default function RolesManager() {
 
   const openEdit = (role) => {
     setEditingRole(role)
-    setForm({ title: role.title, department: role.department, priority: role.priority, status: role.status, role_type: role.role_type || '', job_context: role.job_context || '', location: role.location || 'Lombok', work_arrangement: role.work_arrangement || 'Onsite' })
+    setForm({ title: role.title, department: role.department, priority: role.priority, priority_level: role.priority_level || 'Normal', status: role.status, role_type: role.role_type || '', job_context: role.job_context || '', location: role.location || 'Lombok', work_arrangement: role.work_arrangement || 'Onsite' })
     setShowModal(true)
   }
 
@@ -183,8 +189,9 @@ export default function RolesManager() {
             <tr>
               <th>Role</th>
               <th>Department</th>
-              <th>Priority</th>
               <th>Type</th>
+              <th>Priority Level</th>
+              <th>Role Type</th>
               <th>Candidates</th>
               <th>Status</th>
               <th>Actions</th>
@@ -205,6 +212,11 @@ export default function RolesManager() {
                 <td>
                   <span className="tag" style={priorityStyle[role.priority]}>
                     {role.priority}
+                  </span>
+                </td>
+                <td>
+                  <span className="tag" style={priorityLevelStyle[role.priority_level] || priorityLevelStyle['Normal']}>
+                    {role.priority_level || 'Normal'}
                   </span>
                 </td>
                 <td>
@@ -338,13 +350,23 @@ export default function RolesManager() {
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Priority *</label>
+                  <label className="form-label">Type *</label>
                   <select
                     value={form.priority}
                     onChange={e => setForm({ ...form, priority: e.target.value })}
                     className="form-control"
                   >
                     {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Priority Level *</label>
+                  <select
+                    value={form.priority_level}
+                    onChange={e => setForm({ ...form, priority_level: e.target.value })}
+                    className="form-control"
+                  >
+                    {PRIORITY_LEVELS.map(p => <option key={p}>{p}</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>

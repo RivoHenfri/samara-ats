@@ -205,7 +205,7 @@ export default function CandidatesList() {
       }
     }
     setLoading(false)
-  }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), highMatch, page])
+  }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), archiveView, highMatch, page])
 
   useEffect(() => {
     fetchData()

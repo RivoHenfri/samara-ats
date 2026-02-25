@@ -5,23 +5,26 @@ import {
   LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon, Wand2
 } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
+import { useRBAC } from '../contexts/RBACContext'
 
 export default function Layout({ children, currentPage, setCurrentPage }) {
   const [collapsed, setCollapsed] = useState(false)
   const { user, profile, isAdmin, signOut } = useAuth()
+  const { hasPermission } = useRBAC()
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'Overview' },
-    { id: 'pipeline', label: 'Pipeline', icon: Users, section: 'Recruitment' },
-    { id: 'candidates', label: 'Candidates', icon: Briefcase, section: null },
-    { id: 'roles', label: 'Roles', icon: ClipboardList, section: null },
-    { id: 'jobcreator', label: 'Job Creator', icon: Wand2, section: null },
-    { id: 'tcow', label: 'TCOW Calculator', icon: Calculator, section: 'Analytics' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart2, section: null },
-    { id: 'import', label: 'Import', icon: Upload, section: 'Tools' },
-    { id: 'integrations', label: 'Integrations', icon: LinkIcon, section: 'Settings' },
-    ...(isAdmin ? [{ id: 'users', label: 'User Management', icon: UserCog, section: null }] : []),
-  ]
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'Overview', filter: true },
+    { id: 'pipeline', label: 'Pipeline', icon: Users, section: 'Recruitment', filter: hasPermission('applications', 'read') },
+    { id: 'candidates', label: 'Candidates', icon: Briefcase, section: null, filter: hasPermission('candidates', 'read') },
+    { id: 'employees', label: 'Employees', icon: Users, section: null, filter: hasPermission('employees', 'manage') },
+    { id: 'roles', label: 'Roles', icon: ClipboardList, section: null, filter: hasPermission('roles', 'read') },
+    { id: 'jobcreator', label: 'Job Creator', icon: Wand2, section: null, filter: hasPermission('roles', 'insert') },
+    { id: 'tcow', label: 'TCOW Calculator', icon: Calculator, section: 'Analytics', filter: hasPermission('settings', 'manage') },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2, section: null, filter: hasPermission('applications', 'read') },
+    { id: 'import', label: 'Import', icon: Upload, section: 'Tools', filter: hasPermission('candidates', 'insert') },
+    { id: 'integrations', label: 'Integrations', icon: LinkIcon, section: 'Settings', filter: hasPermission('settings', 'manage') },
+    ...(isAdmin ? [{ id: 'users', label: 'User Management', icon: UserCog, section: null, filter: hasPermission('settings', 'manage') }] : []),
+  ].filter(item => item.filter)
 
   // Build grouped nav
   let lastSection = null

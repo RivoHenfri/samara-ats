@@ -189,6 +189,7 @@ export default function JobCreatorPage() {
                 scoring_weights: weights,
                 status: 'Open',
                 priority: 'Core',
+                priority_level: 'Normal',
             }
 
             const { data: role, error: roleErr } = await supabase

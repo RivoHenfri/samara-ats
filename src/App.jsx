@@ -15,6 +15,8 @@ import IntegrationsManager from './pages/IntegrationsManager'
 import CandidateSchedulingPortal from './pages/CandidateSchedulingPortal'
 import OAuthCallback from './pages/OAuthCallback'
 import JobCreatorPage from './pages/JobCreatorPage'
+import EmployeesPage from './pages/EmployeesPage'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function MainWorkspace() {
   const { user } = useAuth()
@@ -24,16 +26,18 @@ function MainWorkspace() {
 
   const pages = {
     dashboard: <Dashboard setCurrentPage={setCurrentPage} />,
-    pipeline: <KanbanBoard />,
-    candidates: <CandidatesList />,
-    roles: <RolesManager />,
-    tcow: <TCOWCalculator />,
-    analytics: <Analytics />,
-    import: <Import />,
-    users: <UsersPage />,
-    integrations: <IntegrationsManager />,
-    jobcreator: <JobCreatorPage />,
+    pipeline: <ProtectedRoute module="applications" action="read"><KanbanBoard /></ProtectedRoute>,
+    candidates: <ProtectedRoute module="candidates" action="read"><CandidatesList /></ProtectedRoute>,
+    roles: <ProtectedRoute module="roles" action="read"><RolesManager /></ProtectedRoute>,
+    tcow: <ProtectedRoute module="settings" action="manage"><TCOWCalculator /></ProtectedRoute>,
+    analytics: <ProtectedRoute module="applications" action="read"><Analytics /></ProtectedRoute>,
+    import: <ProtectedRoute module="candidates" action="insert"><Import /></ProtectedRoute>,
+    users: <ProtectedRoute module="settings" action="manage"><UsersPage /></ProtectedRoute>,
+    integrations: <ProtectedRoute module="settings" action="manage"><IntegrationsManager /></ProtectedRoute>,
+    jobcreator: <ProtectedRoute module="roles" action="insert"><JobCreatorPage /></ProtectedRoute>,
+    employees: <ProtectedRoute module="employees" action="manage"><EmployeesPage /></ProtectedRoute>,
   }
+
 
   return (
     <Layout currentPage={currentPage} setCurrentPage={setCurrentPage}>

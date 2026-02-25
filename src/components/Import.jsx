@@ -173,7 +173,7 @@ export default function Import() {
           roleId = existingRoleArr[0].id
         } else {
           const { data: newRole, error: insertRoleErr } = await supabase
-            .from('roles').insert({ title: roleName, department: dept, status: 'Open', priority: 'Core' })
+            .from('roles').insert({ title: roleName, department: dept, status: 'Open', priority: 'Core', priority_level: 'Normal' })
             .select('id').single()
           if (insertRoleErr) { errDetails.push(`${row.full_name}: insert role failed — ${insertRoleErr.message}`); errors++; continue }
           roleId = newRole.id
