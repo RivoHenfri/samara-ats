@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Briefcase, Calculator,
-  LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon, Wand2
+  LogOut, Menu, X, ClipboardList, BarChart2, Upload, UserCog, Link as LinkIcon, Wand2, XCircle, UserCheck
 } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
 import { useRBAC } from '../contexts/RBACContext'
@@ -16,6 +16,8 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'Overview', filter: true },
     { id: 'pipeline', label: 'Pipeline', icon: Users, section: 'Recruitment', filter: hasPermission('applications', 'read') },
     { id: 'candidates', label: 'Candidates', icon: Briefcase, section: null, filter: hasPermission('candidates', 'read') },
+    { id: 'rejectedpool', label: 'Rejected Pool', icon: XCircle, section: null, filter: hasPermission('applications', 'read') },
+    { id: 'hired', label: 'Hired', icon: UserCheck, section: null, filter: hasPermission('applications', 'read') },
     { id: 'employees', label: 'Employees', icon: Users, section: null, filter: hasPermission('employees', 'manage') },
     { id: 'roles', label: 'Roles', icon: ClipboardList, section: null, filter: hasPermission('roles', 'read') },
     { id: 'jobcreator', label: 'Job Creator', icon: Wand2, section: null, filter: hasPermission('roles', 'insert') },

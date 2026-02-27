@@ -7,7 +7,6 @@ import MultiSelectDropdown from './MultiSelectDropdown'
 import { ScoreBadge } from './CompatibilityScore'
 
 const activeStages = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer']
-const archiveStages = ['Hired', 'Rejected']
 const departments = ['Hospitality', 'Operations', 'Construction']
 const origins = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
 
@@ -102,7 +101,6 @@ export default function CandidatesList() {
   const deptFilters = searchParams.get('depts')?.split(',').filter(Boolean) || []
   const stageFilters = searchParams.get('stages')?.split(',').filter(Boolean) || []
   const originFilters = searchParams.get('origins')?.split(',').filter(Boolean) || []
-  const archiveView = searchParams.get('archive') === '1'
   const highMatch = searchParams.get('highMatch') === '1'
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = 20
@@ -163,7 +161,7 @@ export default function CandidatesList() {
     if (stageFilters.length > 0) {
       query = query.in('stage', stageFilters)
     } else {
-      query = query.in('stage', archiveView ? archiveStages : activeStages)
+      query = query.in('stage', activeStages)
     }
 
     if (originFilters.length > 0) {
@@ -205,7 +203,7 @@ export default function CandidatesList() {
       }
     }
     setLoading(false)
-  }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), archiveView, highMatch, page])
+  }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), highMatch, page])
 
   useEffect(() => {
     fetchData()
@@ -221,10 +219,6 @@ export default function CandidatesList() {
       }
     } else {
       nextParams.delete(key)
-    }
-    // Specific logic for archive toggle vs stage filters: clear stage filters if switching views
-    if (key === 'archive') {
-      nextParams.delete('stages')
     }
     nextParams.set('page', '1') // Reset to page 1 on filter change
     setSearchParams(nextParams)
@@ -338,20 +332,6 @@ export default function CandidatesList() {
             <Zap size={12} /> High Match (80+)
           </button>
           <button
-            onClick={() => {
-              const next = new URLSearchParams(searchParams)
-              if (archiveView) next.delete('archive')
-              else next.set('archive', '1')
-              next.delete('stages') // clear stage filter when toggling
-              next.set('page', '1')
-              setSearchParams(next)
-            }}
-            className={`btn btn-sm ${archiveView ? 'btn-teal' : 'btn-ghost'}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            🗄️ Archive View
-          </button>
-          <button
             onClick={() => updateFilters('origins', originFilters.includes('Lombok Local') ? originFilters.filter(o => o !== 'Lombok Local') : [...originFilters, 'Lombok Local'])}
             className={`btn btn-sm ${originFilters.includes('Lombok Local') ? 'btn-teal' : 'btn-ghost'}`}
           >
@@ -392,7 +372,7 @@ export default function CandidatesList() {
 
             <MultiSelectDropdown
               label="Stage"
-              options={(archiveView ? archiveStages : activeStages).map(s => ({ label: s, value: s }))}
+              options={activeStages.map(s => ({ label: s, value: s }))}
               selectedValues={stageFilters}
               onChange={vals => updateFilters('stages', vals)}
             />
@@ -528,7 +508,6 @@ export default function CandidatesList() {
                 <th>Stage</th>
                 <th>Origin</th>
                 <th>Score</th>
-                {archiveView && <th>Reason Code</th>}
                 <th>Suitability</th>
                 <th>Current Salary</th>
                 <th>Expected Salary</th>
@@ -598,19 +577,6 @@ export default function CandidatesList() {
                     <td onClick={e => e.stopPropagation()}>
                       <ScoreBadge score={scores[app.id] ?? null} size="sm" />
                     </td>
-                    {archiveView && (
-                      <td>
-                        {app.stage === 'Rejected' ? (
-                          <span style={{ fontSize: 11, color: 'var(--alert)', background: 'rgba(192,97,74,0.1)', padding: '2px 6px', borderRadius: 4 }}>
-                            {app.rejection_reason || 'Not Specified'}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, color: 'var(--teal)', background: 'rgba(74,124,116,0.1)', padding: '2px 6px', borderRadius: 4 }}>
-                            Hired
-                          </span>
-                        )}
-                      </td>
-                    )}
                     <td>
                       {app.candidates?.suitability_score != null ? (
                         <span style={{

@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { autoScore, autoGenerateQuestions } from '../lib/aiWorkflow'
-import { X, Send, Pencil, Check } from 'lucide-react'
+import { X, Send, Pencil, Check, RefreshCw } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import CVSourcePanel from './CVSourcePanel'
 import ScreeningQuestions from './ScreeningQuestions'
 import CompatibilityScore from './CompatibilityScore'
 import SchedulePanel from './SchedulePanel'
+import { useRBAC } from '../contexts/RBACContext'
 
 const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
 const ORIGINS = ['Lombok Local', 'Indonesian (Non-Lombok)', 'International']
@@ -37,6 +38,7 @@ function displayIDR(num) {
 
 export default function CandidateDetail({ app, onClose, onUpdated }) {
   const { isManager } = useAuth()
+  const { hasPermission } = useRBAC()
   const [notes, setNotes] = useState([])
   const [newNote, setNewNote] = useState('')
   const [saving, setSaving] = useState(false)
@@ -84,6 +86,30 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       .eq('id', app.id)
 
     if (!error) {
+      if (onUpdated) onUpdated()
+      onClose()
+    }
+    setSavingEdit(false)
+  }
+
+  const handleReconsider = async () => {
+    const targetStage = app.rejection_stage && app.rejection_stage !== 'Unknown'
+      ? app.rejection_stage
+      : 'New'
+    if (!window.confirm(`Reconsider this candidate and move back to "${targetStage}"?`)) return
+
+    setSavingEdit(true)
+    const { error } = await supabase
+      .from('applications')
+      .update({ stage: targetStage })
+      .eq('id', app.id)
+
+    if (!error) {
+      await supabase.from('notes').insert({
+        application_id: app.id,
+        content: `Candidate reconsidered and moved back to "${targetStage}" from Rejected. Previous rejection reason: ${app.rejection_reason || 'Not Specified'}`,
+        created_by: 'System',
+      })
       if (onUpdated) onUpdated()
       onClose()
     }
@@ -255,6 +281,31 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
                     >
                       Reject
                     </button>
+                  </div>
+                )}
+
+                {app.stage === 'Rejected' && (
+                  <div style={{ marginTop: 12 }}>
+                    {app.rejection_reason && (
+                      <p style={{ fontSize: 12, color: 'var(--alert)', marginBottom: 8 }}>
+                        Rejection reason: {app.rejection_reason}
+                      </p>
+                    )}
+                    {hasPermission('applications', 'reconsider') && (
+                      <button
+                        onClick={handleReconsider}
+                        disabled={savingEdit}
+                        className="btn btn-sm"
+                        style={{
+                          background: 'white', color: 'var(--teal)',
+                          border: '1px solid var(--teal)',
+                          display: 'flex', alignItems: 'center', gap: 4,
+                        }}
+                      >
+                        <RefreshCw size={12} />
+                        Reconsider
+                      </button>
+                    )}
                   </div>
                 )}
               </>
