@@ -16,6 +16,8 @@ import CandidateSchedulingPortal from './pages/CandidateSchedulingPortal'
 import OAuthCallback from './pages/OAuthCallback'
 import JobCreatorPage from './pages/JobCreatorPage'
 import EmployeesPage from './pages/EmployeesPage'
+import RejectedPoolPage from './pages/RejectedPoolPage'
+import HiredPoolPage from './pages/HiredPoolPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function MainWorkspace() {
@@ -36,6 +38,8 @@ function MainWorkspace() {
     integrations: <ProtectedRoute module="settings" action="manage"><IntegrationsManager /></ProtectedRoute>,
     jobcreator: <ProtectedRoute module="roles" action="insert"><JobCreatorPage /></ProtectedRoute>,
     employees: <ProtectedRoute module="employees" action="manage"><EmployeesPage /></ProtectedRoute>,
+    rejectedpool: <ProtectedRoute module="applications" action="read"><RejectedPoolPage /></ProtectedRoute>,
+    hired: <ProtectedRoute module="applications" action="read"><HiredPoolPage setCurrentPage={setCurrentPage} /></ProtectedRoute>,
   }
 
 
