@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Search, RotateCcw, ChevronLeft, ChevronRight, X, Clock, UserCheck, Users, CheckCircle, Loader } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInDays } from 'date-fns'
@@ -31,8 +31,9 @@ function onboardingBadge(status) {
   return map[status] || map.Pending
 }
 
-export default function HiredPoolPage({ setCurrentPage }) {
+export default function HiredPoolPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const [applications, setApplications] = useState([])
   const [roles, setRoles] = useState([])
@@ -491,10 +492,7 @@ export default function HiredPoolPage({ setCurrentPage }) {
                           {obStatus === 'Pending' && (
                             <button
                               onClick={() => {
-                                // Navigate to employees page for onboarding
-                                if (typeof setCurrentPage === 'function') {
-                                  setCurrentPage('employees')
-                                }
+                                navigate('/employees')
                               }}
                               className="btn btn-ghost btn-xs"
                               style={{ fontSize: 11, padding: '4px 8px', color: 'var(--gold)' }}

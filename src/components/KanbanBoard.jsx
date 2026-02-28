@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { autoScore, autoGenerateQuestions } from '../lib/aiWorkflow'
 import CandidateCard, { getWhatsAppMessage } from './CandidateCard'
@@ -23,6 +23,7 @@ const colClass = {
 }
 
 export default function KanbanBoard() {
+  const { roleId: urlRoleId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [applications, setApplications] = useState([])
@@ -36,7 +37,10 @@ export default function KanbanBoard() {
 
   // Filters from URL
   const search = searchParams.get('q') || ''
-  const roleFilters = searchParams.get('roles')?.split(',').filter(Boolean) || []
+  const searchParamRoles = searchParams.get('roles')?.split(',').filter(Boolean) || []
+  const roleFilters = urlRoleId
+    ? [...new Set([urlRoleId, ...searchParamRoles])]
+    : searchParamRoles
   const deptFilters = searchParams.get('depts')?.split(',').filter(Boolean) || []
   const originFilters = searchParams.get('origins')?.split(',').filter(Boolean) || []
 
