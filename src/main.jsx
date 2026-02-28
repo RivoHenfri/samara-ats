@@ -8,6 +8,7 @@ import { RBACProvider } from './contexts/RBACContext'
 import AuthCallback from './pages/AuthCallback'
 import CareersPage from './pages/CareersPage'
 import ApplyPage from './pages/ApplyPage'
+import PrescreeningPage from './pages/PrescreeningPage'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')).render(
         {/* ── Public routes (no auth required) ── */}
         <Route path="/careers/:tenantSlug" element={<CareersPage />} />
         <Route path="/apply/:roleId" element={<ApplyPage />} />
+        <Route path="/prescreening/:token" element={<PrescreeningPage />} />
 
         {/* ── Auth callback (uses useNavigate, must be inside BrowserRouter) ── */}
         <Route path="/auth/callback" element={<AuthCallback />} />
