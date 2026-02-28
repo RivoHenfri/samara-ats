@@ -15,8 +15,7 @@ export default function EmployeeTaskTracker({ employee, workflowId, onClose }) {
     const fetchTasks = async () => {
         setLoading(true)
         const { data, error } = await supabase
-            .schema('hr')
-            .from('employee_workflow_tasks')
+            .from('hr_employee_workflow_tasks')
             .select('*')
             .eq('employee_workflow_id', workflowId)
             .order('sort_order', { ascending: true })
@@ -36,8 +35,7 @@ export default function EmployeeTaskTracker({ employee, workflowId, onClose }) {
         ))
 
         const { error } = await supabase
-            .schema('hr')
-            .from('employee_workflow_tasks')
+            .from('hr_employee_workflow_tasks')
             .update({
                 status: newStatus,
                 completed_at: newStatus === 'completed' ? new Date().toISOString() : null
@@ -49,28 +47,28 @@ export default function EmployeeTaskTracker({ employee, workflowId, onClose }) {
             // Revert on error
             fetchTasks()
         } else {
-            checkWorkflowCompletion(newStatus)
+            checkWorkflowCompletion(task.id, newStatus)
         }
     }
 
-    const checkWorkflowCompletion = async (lastActionStatus) => {
+    const checkWorkflowCompletion = async (taskId, lastActionStatus) => {
         // If we just unchecked something, ensure workflow is "In Progress"
         if (lastActionStatus === 'pending') {
-            await supabase.schema('hr').from('employee_workflows').update({ status: 'In Progress' }).eq('id', workflowId)
+            await supabase.from('hr_employee_workflows').update({ status: 'In Progress' }).eq('id', workflowId)
             return
         }
 
         // Check if all are complete
-        const allComplete = tasks.every(t => t.status === 'completed' || (t.id === task.id && lastActionStatus === 'completed'))
+        const allComplete = tasks.every(t => t.status === 'completed' || (t.id === taskId && lastActionStatus === 'completed'))
 
         if (allComplete) {
-            await supabase.schema('hr').from('employee_workflows').update({
+            await supabase.from('hr_employee_workflows').update({
                 status: 'Completed',
                 completed_at: new Date().toISOString()
             }).eq('id', workflowId)
         } else {
             // Just marking one as completed moves it from Scheduled to In Progress
-            await supabase.schema('hr').from('employee_workflows').update({ status: 'In Progress' }).eq('id', workflowId)
+            await supabase.from('hr_employee_workflows').update({ status: 'In Progress' }).eq('id', workflowId)
         }
     }
 

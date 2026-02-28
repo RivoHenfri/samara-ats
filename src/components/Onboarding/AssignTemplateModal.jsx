@@ -14,8 +14,7 @@ export default function AssignTemplateModal({ employee, onClose, onSuccess }) {
     const fetchTemplates = async () => {
         // Assuming standard public schema if RLS is setup or hr if using explicit schema
         const { data, error } = await supabase
-            .schema('hr')
-            .from('workflow_templates')
+            .from('hr_workflow_templates')
             .select('*')
             .order('name')
 
@@ -31,8 +30,7 @@ export default function AssignTemplateModal({ employee, onClose, onSuccess }) {
         try {
             // 1. Create the employee_workflow instance
             const { data: workflow, error: workflowError } = await supabase
-                .schema('hr')
-                .from('employee_workflows')
+                .from('hr_employee_workflows')
                 .insert({
                     employee_id: employee.id,
                     template_id: selectedTemplate.id,
@@ -45,8 +43,7 @@ export default function AssignTemplateModal({ employee, onClose, onSuccess }) {
 
             // 2. Fetch the blueprint tasks for this template
             const { data: blueprintTasks, error: tasksError } = await supabase
-                .schema('hr')
-                .from('workflow_template_tasks')
+                .from('hr_workflow_template_tasks')
                 .select('*')
                 .eq('template_id', selectedTemplate.id)
 
@@ -64,8 +61,7 @@ export default function AssignTemplateModal({ employee, onClose, onSuccess }) {
                 }))
 
                 const { error: insertError } = await supabase
-                    .schema('hr')
-                    .from('employee_workflow_tasks')
+                    .from('hr_employee_workflow_tasks')
                     .insert(instantiatedTasks)
 
                 if (insertError) throw insertError
@@ -73,8 +69,7 @@ export default function AssignTemplateModal({ employee, onClose, onSuccess }) {
 
             // 4. Update employee record status
             await supabase
-                .schema('hr')
-                .from('employee_records')
+                .from('hr_employee_records')
                 .update({ status: 'Scheduled' })
                 .eq('id', employee.id)
 
