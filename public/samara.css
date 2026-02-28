@@ -168,6 +168,7 @@ input, select, textarea, button { font-family: inherit; }
   background: none;
   width: 100%;
   text-align: left;
+  text-decoration: none;
   position: relative;
   transition: background 0.18s, color 0.18s;
   white-space: nowrap;

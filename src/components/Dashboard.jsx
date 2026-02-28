@@ -14,7 +14,7 @@ import PipelineVelocityCard from './dashboard/PipelineVelocityCard'
 import TodaysInterviews from './dashboard/TodaysInterviews'
 import RecruiterWorkload from './dashboard/RecruiterWorkload'
 
-export default function Dashboard({ setCurrentPage }) {
+export default function Dashboard() {
   const { isAdmin, isManager } = useAuth()
 
   const [allApplications, setAllApplications] = useState([])
@@ -246,14 +246,14 @@ export default function Dashboard({ setCurrentPage }) {
               <SourceBreakdown applications={periodApps} />
             </div>
             {/* Row 3: Action Queue */}
-            <ActionQueue applications={filteredApps} onNavigate={setCurrentPage} />
+            <ActionQueue applications={filteredApps} />
           </>
         )}
 
         {viewMode === 'recruiter' && (
           <>
             {/* Row 1: Action Queue (prominent) */}
-            <ActionQueue applications={filteredApps} onNavigate={setCurrentPage} />
+            <ActionQueue applications={filteredApps} />
             {/* Row 2: Interviews + Pipeline */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
               <TodaysInterviews />

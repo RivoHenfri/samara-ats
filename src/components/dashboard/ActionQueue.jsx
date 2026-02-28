@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { checkStagnation, getUrgency } from '../../lib/stagnationMonitor'
 import { STAGE_CLASS } from '../../lib/constants'
 import { AlertTriangle } from 'lucide-react'
@@ -8,7 +9,8 @@ const URGENCY_COLOR = {
   info:     'var(--stone)',
 }
 
-export default function ActionQueue({ applications, onNavigate }) {
+export default function ActionQueue({ applications }) {
+  const navigate = useNavigate()
   const alerts = checkStagnation(applications)
   const topAlerts = alerts.slice(0, 10)
 
@@ -46,8 +48,8 @@ export default function ActionQueue({ applications, onNavigate }) {
               return (
                 <tr
                   key={alert.id}
-                  style={{ cursor: onNavigate ? 'pointer' : undefined }}
-                  onClick={() => onNavigate?.('pipeline')}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate('/pipeline')}
                 >
                   <td>
                     <div style={{

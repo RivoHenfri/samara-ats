@@ -16,7 +16,7 @@ function setDismissed(ids) {
   localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids))
 }
 
-export default function NotificationCenter({ collapsed, onNavigate }) {
+export default function NotificationCenter({ collapsed }) {
   const [alerts, setAlerts] = useState([])
   const [dismissed, setDismissedState] = useState(getDismissed)
   const [open, setOpen] = useState(false)

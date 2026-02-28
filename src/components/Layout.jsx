@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, Briefcase, Calculator,
@@ -7,7 +8,23 @@ import {
 import NotificationCenter from './NotificationCenter'
 import { useRBAC } from '../contexts/RBACContext'
 
-export default function Layout({ children, currentPage, setCurrentPage }) {
+const NAV_PATHS = {
+  dashboard: '/dashboard',
+  pipeline: '/pipeline',
+  candidates: '/candidates',
+  rejectedpool: '/rejected',
+  hired: '/hired',
+  employees: '/employees',
+  roles: '/roles',
+  jobcreator: '/roles/create',
+  tcow: '/tcow',
+  analytics: '/analytics',
+  import: '/import',
+  integrations: '/integrations',
+  users: '/users',
+}
+
+export default function Layout({ children }) {
   const [collapsed, setCollapsed] = useState(false)
   const { user, profile, isAdmin, signOut } = useAuth()
   const { hasPermission } = useRBAC()
@@ -66,7 +83,7 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
 
         {/* Notification center */}
         <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <NotificationCenter collapsed={collapsed} onNavigate={setCurrentPage} />
+          <NotificationCenter collapsed={collapsed} />
         </div>
 
         {/* Nav items */}
@@ -76,16 +93,17 @@ export default function Layout({ children, currentPage, setCurrentPage }) {
               {item.showHeader && !collapsed && (
                 <div className="sidebar-section">{item.section}</div>
               )}
-              <button
-                onClick={() => setCurrentPage(item.id)}
-                className={`nav-btn${currentPage === item.id ? ' active' : ''}`}
+              <NavLink
+                to={NAV_PATHS[item.id]}
+                end={item.id === 'roles'}
+                className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
                 title={collapsed ? item.label : undefined}
               >
                 <span className="nav-icon-wrap">
                   <item.icon size={16} />
                 </span>
                 {!collapsed && <span className="nav-label">{item.label}</span>}
-              </button>
+              </NavLink>
             </div>
           ))}
         </nav>
