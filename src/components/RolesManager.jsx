@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, X, Check, Link2, Wand2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Link2, Wand2, ClipboardList } from 'lucide-react'
+import PrescreeningTemplateEditor from './PrescreeningTemplateEditor'
 
 const PRIORITIES = ['Core', 'Support']
 const PRIORITY_LEVELS = ['Normal', 'Low', 'Urgent']
@@ -47,6 +48,7 @@ export default function RolesManager() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [copied, setCopied] = useState(null) // role.id that was just copied
   const [departments, setDepartments] = useState([])
+  const [modalTab, setModalTab] = useState('details') // 'details' | 'prescreening'
 
   useEffect(() => { fetchData(); fetchDepartments() }, [])
 
@@ -73,12 +75,14 @@ export default function RolesManager() {
   const openAdd = () => {
     setEditingRole(null)
     setForm({ ...emptyForm, department: departments[0] || '' })
+    setModalTab('details')
     setShowModal(true)
   }
 
   const openEdit = (role) => {
     setEditingRole(role)
     setForm({ title: role.title, department: role.department, priority: role.priority, priority_level: role.priority_level || 'Normal', status: role.status, role_type: role.role_type || '', job_context: role.job_context || '', location: role.location || 'Lombok', work_arrangement: role.work_arrangement || 'Onsite' })
+    setModalTab('details')
     setShowModal(true)
   }
 
@@ -322,11 +326,47 @@ export default function RolesManager() {
       {/* Modal */}
       {showModal && (
         <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: 440 }}>
+          <div className="modal" style={{ maxWidth: editingRole ? 560 : 440 }}>
             <div className="modal-header">
               <div className="modal-title">{editingRole ? 'Edit Role' : 'Add Role'}</div>
               <button onClick={() => setShowModal(false)} className="modal-close"><X size={16} /></button>
             </div>
+
+            {/* Tabs (only show for editing existing roles) */}
+            {editingRole && (
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--sand-dark)', padding: '0 20px' }}>
+                {[
+                  { key: 'details', label: 'Role Details' },
+                  { key: 'prescreening', label: 'Prescreening Form', icon: ClipboardList },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setModalTab(tab.key)}
+                    style={{
+                      padding: '9px 14px', fontSize: 12, fontWeight: modalTab === tab.key ? 600 : 400,
+                      color: modalTab === tab.key ? 'var(--teal)' : 'var(--stone)',
+                      background: 'none', border: 'none',
+                      borderBottom: modalTab === tab.key ? '2px solid var(--teal)' : '2px solid transparent',
+                      cursor: 'pointer', marginBottom: -1, display: 'flex', alignItems: 'center', gap: 5,
+                    }}
+                  >
+                    {tab.icon && <tab.icon size={12} />}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Prescreening Tab */}
+            {modalTab === 'prescreening' && editingRole && (
+              <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                <PrescreeningTemplateEditor roleId={editingRole.id} tenantId={editingRole.tenant_id} />
+              </div>
+            )}
+
+            {/* Details Tab (original form) */}
+            {modalTab === 'details' && (
             <form onSubmit={handleSave}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -440,6 +480,7 @@ export default function RolesManager() {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}

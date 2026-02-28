@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { autoScore, autoGenerateQuestions } from '../lib/aiWorkflow'
-import { X, Send, Pencil, Check, RefreshCw } from 'lucide-react'
+import { autoScore, autoGenerateQuestions, autoPreparePrescreen } from '../lib/aiWorkflow'
+import { X, Send, Pencil, Check, RefreshCw, FileText } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import CVSourcePanel from './CVSourcePanel'
 import ScreeningQuestions from './ScreeningQuestions'
 import CompatibilityScore from './CompatibilityScore'
 import SchedulePanel from './SchedulePanel'
+import PrescreeningResponseViewer from './PrescreeningResponseViewer'
+import PrescreeningNotifyModal from './PrescreeningNotifyModal'
 import { useRBAC } from '../contexts/RBACContext'
 
 const STAGES = ['New', 'Screening', 'Interview Pending', 'Interview Scheduled', 'Interview Completed', 'Offer', 'Hired', 'Rejected']
@@ -46,8 +48,9 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
   const [roles, setRoles] = useState([])
   const [savingEdit, setSavingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState('notes') // 'notes' | 'screening' | 'score'
+  const [activeTab, setActiveTab] = useState('notes') // 'notes' | 'screening' | 'prescreening' | 'score'
   const [latestScore, setLatestScore] = useState(null)
+  const [prescreenNotify, setPrescreenNotify] = useState(null)
 
   const [editData, setEditData] = useState({
     role_id: app?.role_id || '',
@@ -226,6 +229,11 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       // ── Auto-trigger AI on stage transition (fire-and-forget) ──
       if (newStage === 'Screening' && prevStage !== 'Screening') {
         autoScore(app.id)
+        // Prepare prescreening form and show notification modal
+        const result = await autoPreparePrescreen(app.id)
+        if (result) {
+          setPrescreenNotify({ app, formUrl: result.formUrl })
+        }
       } else if (newStage.startsWith('Interview') && !prevStage.startsWith('Interview')) {
         autoGenerateQuestions(app.id)
       }
@@ -467,8 +475,9 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
         }}>
           {[
             { key: 'notes', label: `Notes (${notes.length})` },
+            { key: 'prescreening', label: app.prescreening_status === 'completed' ? 'Prescreening \u2713' : 'Prescreening' },
             { key: 'screening', label: 'Screening Questions' },
-            { key: 'score', label: latestScore != null ? `AI Score · ${latestScore}` : 'AI Score' },
+            { key: 'score', label: latestScore != null ? `AI Score \u00b7 ${latestScore}` : 'AI Score' },
             { key: 'schedule', label: 'Scheduler' },
           ].map(tab => (
             <button
@@ -557,6 +566,11 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
           </>
         )}
 
+        {/* ── Prescreening tab ── */}
+        {activeTab === 'prescreening' && (
+          <PrescreeningResponseViewer app={app} />
+        )}
+
         {/* ── Screening Questions tab ── */}
         {activeTab === 'screening' && (
           <ScreeningQuestions app={app} />
@@ -573,6 +587,31 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
         )}
 
       </div>
+
+      {/* View Brief button */}
+      <div style={{ padding: '12px 22px', borderTop: '1px solid var(--sand-dark)', textAlign: 'center' }}>
+        <button
+          onClick={() => window.open(`/candidates/${app.id}/brief`, '_blank')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'none', border: '1px solid var(--sand-dark)',
+            borderRadius: 6, padding: '6px 14px', fontSize: 11.5,
+            color: 'var(--teal)', cursor: 'pointer', fontFamily: 'inherit',
+            fontWeight: 500,
+          }}
+        >
+          <FileText size={13} /> View Candidate Brief
+        </button>
+      </div>
+
+      {/* Prescreening notify modal */}
+      {prescreenNotify && (
+        <PrescreeningNotifyModal
+          app={prescreenNotify.app}
+          formUrl={prescreenNotify.formUrl}
+          onClose={() => setPrescreenNotify(null)}
+        />
+      )}
     </div>
   )
 }

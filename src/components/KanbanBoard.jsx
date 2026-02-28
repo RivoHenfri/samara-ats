@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { autoScore, autoGenerateQuestions } from '../lib/aiWorkflow'
+import { autoScore, autoGenerateQuestions, autoPreparePrescreen } from '../lib/aiWorkflow'
 import CandidateCard, { getWhatsAppMessage } from './CandidateCard'
 import AddCandidateModal from './AddCandidateModal'
+import PrescreeningNotifyModal from './PrescreeningNotifyModal'
 import { Plus, Search, RotateCcw, X } from 'lucide-react'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import { checkStagnation, groupByStage, STAGE_NEXT_ACTION } from '../lib/stagnationMonitor'
@@ -34,6 +35,7 @@ export default function KanbanBoard() {
   const [selectedIds, setSelectedIds] = useState([])
   const [lastSelected, setLastSelected] = useState(null)
   const [bulkMessaging, setBulkMessaging] = useState(null)
+  const [prescreenNotify, setPrescreenNotify] = useState(null) // { app, formUrl }
 
   // Filters from URL
   const search = searchParams.get('q') || ''
@@ -164,6 +166,13 @@ export default function KanbanBoard() {
     // ── Auto-trigger AI in background based on destination stage ──
     if (stage === 'Screening' && prevStage !== 'Screening') {
       autoScore(appId)          // fire-and-forget; no-ops if already scored
+
+      // Prepare prescreening form and show notification modal
+      const result = await autoPreparePrescreen(appId)
+      if (result) {
+        const fullApp = applications.find(a => a.id === appId)
+        setPrescreenNotify({ app: fullApp, formUrl: result.formUrl })
+      }
     } else if (stage === 'Interview Pending' && prevStage !== 'Interview Pending') {
       autoGenerateQuestions(appId) // fire-and-forget; no-ops if already generated
     }
@@ -493,6 +502,15 @@ export default function KanbanBoard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Prescreening notification modal */}
+      {prescreenNotify && (
+        <PrescreeningNotifyModal
+          app={prescreenNotify.app}
+          formUrl={prescreenNotify.formUrl}
+          onClose={() => setPrescreenNotify(null)}
+        />
       )}
     </div>
   )

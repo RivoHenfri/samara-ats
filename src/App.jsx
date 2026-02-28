@@ -18,6 +18,7 @@ import EmployeesPage from './pages/EmployeesPage'
 import RejectedPoolPage from './pages/RejectedPoolPage'
 import HiredPoolPage from './pages/HiredPoolPage'
 import CandidateDetailPage from './pages/CandidateDetailPage'
+import CandidateBriefPage from './pages/CandidateBriefPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function MainWorkspace() {
@@ -32,6 +33,9 @@ function MainWorkspace() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/pipeline/:roleId?" element={
           <ProtectedRoute module="applications" action="read"><KanbanBoard /></ProtectedRoute>
+        } />
+        <Route path="/candidates/:appId/brief" element={
+          <ProtectedRoute module="candidates" action="read"><CandidateBriefPage /></ProtectedRoute>
         } />
         <Route path="/candidates/:appId" element={
           <ProtectedRoute module="candidates" action="read"><CandidateDetailPage /></ProtectedRoute>
