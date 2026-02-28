@@ -70,7 +70,6 @@ END $$;
 -- 2. BACKFILL HR EMPLOYEE RECORDS (Idempotent)
 INSERT INTO hr.employee_records (
     candidate_id,
-    application_id,
     first_name,
     last_name,
     email,
@@ -81,7 +80,6 @@ INSERT INTO hr.employee_records (
 )
 SELECT 
     a.candidate_id,
-    a.id,
     split_part(c.full_name, ' ', 1) as first_name,
     CASE 
         WHEN position(' ' in c.full_name) > 0 
