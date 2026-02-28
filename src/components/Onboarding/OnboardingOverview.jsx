@@ -24,7 +24,7 @@ export default function OnboardingOverview() {
                 .from('hr_employee_records')
                 .select(`
           *,
-          hr_employee_workflows!employee_id (
+          employee_workflows:hr_employee_workflows!employee_id (
             status,
             id,
             template_id
