@@ -588,19 +588,26 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
 
       </div>
 
-      {/* View Brief button */}
-      <div style={{ padding: '12px 22px', borderTop: '1px solid var(--sand-dark)', textAlign: 'center' }}>
+      {/* Footer with View Brief button */}
+      <div style={{
+        padding: '12px 22px',
+        borderTop: '1px solid var(--sand-dark)',
+        textAlign: 'center',
+        backgroundColor: 'var(--sand-light)',
+      }}>
         <button
           onClick={() => window.open(`/candidates/${app.id}/brief`, '_blank')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: 'none', border: '1px solid var(--sand-dark)',
-            borderRadius: 6, padding: '6px 14px', fontSize: 11.5,
+            borderRadius: 6, padding: '8px 16px', fontSize: 12,
             color: 'var(--teal)', cursor: 'pointer', fontFamily: 'inherit',
             fontWeight: 500,
           }}
+          onMouseEnter={e => e.target.style.background = 'var(--sand-light)'}
+          onMouseLeave={e => e.target.style.background = 'none'}
         >
-          <FileText size={13} /> View Candidate Brief
+          <FileText size={14} /> View Candidate Brief
         </button>
       </div>
 
