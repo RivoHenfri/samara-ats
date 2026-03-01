@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, X, Check, Link2, Wand2, ClipboardList } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Link2, Wand2, ClipboardList, FileSpreadsheet } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import PrescreeningTemplateEditor from './PrescreeningTemplateEditor'
 
 const PRIORITIES = ['Core', 'Support']
@@ -35,6 +36,7 @@ const deptStyle = {
 const emptyForm = { title: '', department: '', priority: 'Core', priority_level: 'Normal', status: 'Open', role_type: '', job_context: '', location: 'Lombok', work_arrangement: 'Onsite' }
 
 export default function RolesManager() {
+  const navigate = useNavigate()
   const [roles, setRoles] = useState([])
   const [candidateCounts, setCandidateCounts] = useState({})
   const [loading, setLoading] = useState(true)
@@ -284,6 +286,15 @@ export default function RolesManager() {
                       onMouseLeave={e => e.currentTarget.style.color = '#9A8F80'}
                     >
                       <Wand2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => navigate(`/roles/${role.id}/summary`)}
+                      title="View Role Summary"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9A8F80', padding: 2, display: 'flex' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#4A7C74'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#9A8F80'}
+                    >
+                      <FileSpreadsheet size={14} />
                     </button>
                     {deleteConfirm === role.id ? (
                       <div style={{ display: 'flex', gap: 4 }}>
