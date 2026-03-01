@@ -19,6 +19,7 @@ import RejectedPoolPage from './pages/RejectedPoolPage'
 import HiredPoolPage from './pages/HiredPoolPage'
 import CandidateDetailPage from './pages/CandidateDetailPage'
 import CandidateBriefPage from './pages/CandidateBriefPage'
+import RoleSummaryPage from './pages/RoleSummaryPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function MainWorkspace() {
@@ -42,6 +43,9 @@ function MainWorkspace() {
         } />
         <Route path="/candidates" element={
           <ProtectedRoute module="candidates" action="read"><CandidatesList /></ProtectedRoute>
+        } />
+        <Route path="/roles/:roleId/summary" element={
+          <ProtectedRoute module="roles" action="read"><RoleSummaryPage /></ProtectedRoute>
         } />
         <Route path="/roles/create" element={
           <ProtectedRoute module="roles" action="insert"><JobCreatorPage /></ProtectedRoute>

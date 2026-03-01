@@ -61,6 +61,8 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       ? parseInt(app.candidates.current_salary).toLocaleString('id-ID') : '',
     expected_salary: app?.candidates?.expected_salary
       ? parseInt(app.candidates.expected_salary).toLocaleString('id-ID') : '',
+    screening_verdict: app?.screening_verdict || '',
+    screening_comment: app?.screening_comment || '',
   })
 
   useEffect(() => {
@@ -212,6 +214,8 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
       }
       const appUpdate = { stage: newStage }
       if (editData.role_id) appUpdate.role_id = editData.role_id   // guard: never send empty string for UUID column
+      appUpdate.screening_verdict = editData.screening_verdict || null
+      appUpdate.screening_comment = editData.screening_comment || null
       await supabase.from('applications')
         .update(appUpdate)
         .eq('id', app.id)
@@ -415,6 +419,32 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
                 />
               </div>
             </div>
+            {/* Screening Verdict */}
+            <div className="form-group">
+              <label className="form-label">Screening Verdict</label>
+              <select
+                value={editData.screening_verdict}
+                onChange={e => setEditData(d => ({ ...d, screening_verdict: e.target.value }))}
+                className="form-control"
+              >
+                <option value="">— No Verdict —</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="passed_with_concern">Passed with concern</option>
+              </select>
+            </div>
+            {/* Screening Comment */}
+            <div className="form-group">
+              <label className="form-label">Screening Comment</label>
+              <textarea
+                value={editData.screening_comment}
+                onChange={e => setEditData(d => ({ ...d, screening_comment: e.target.value }))}
+                className="form-control"
+                rows={3}
+                placeholder="Recruiter screening notes…"
+                style={{ resize: 'vertical', fontFamily: 'inherit' }}
+              />
+            </div>
             {/* Save */}
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={saveEdit} disabled={savingEdit} className="btn btn-primary btn-sm">
@@ -437,6 +467,27 @@ export default function CandidateDetail({ app, onClose, onUpdated }) {
             <InfoRow label="Applied" value={format(new Date(app.created_at), 'dd MMM yyyy')} />
             <InfoRow label="Current Salary" value={displayIDR(candidate?.current_salary)} />
             <InfoRow label="Expected Salary" value={displayIDR(candidate?.expected_salary)} />
+            {app.screening_verdict && (
+              <InfoRow label="Screening Verdict" value={
+                <span className="tag" style={{
+                  fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+                  ...(app.screening_verdict === 'passed'
+                    ? { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' }
+                    : app.screening_verdict === 'failed'
+                    ? { background: 'rgba(192,97,74,0.12)', color: '#C0614A' }
+                    : { background: 'rgba(184,150,90,0.12)', color: '#8A6010' }),
+                }}>
+                  {app.screening_verdict === 'passed' ? 'Passed'
+                    : app.screening_verdict === 'failed' ? 'Failed'
+                    : 'Passed with concern'}
+                </span>
+              } />
+            )}
+            {app.screening_comment && (
+              <InfoRow label="Screening Comment" value={
+                <span style={{ fontSize: 11.5, lineHeight: 1.4 }}>{app.screening_comment}</span>
+              } />
+            )}
             {candidate?.suitability_score != null && (
               <InfoRow label="Suitability Score" value={
                 <span style={{
