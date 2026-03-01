@@ -189,7 +189,24 @@ export default function PrescreeningPage() {
   )
 
   // ── Render form ──────────────────────────────────────────────────────
-  const fixedFields = (template?.fixed_fields || []).filter(f => f.enabled !== false)
+
+  // Default fields used when no template has been configured for the role
+  const DEFAULT_FIELDS = [
+    { field_key: 'current_salary',    type: 'currency',      label: 'Current Monthly Salary (IDR)',  required: false },
+    { field_key: 'expected_salary',   type: 'currency',      label: 'Expected Monthly Salary (IDR)', required: true  },
+    { field_key: 'notice_period',     type: 'select',        label: 'Notice Period',                 required: true,
+      options: ['Immediately available', '1 week', '2 weeks', '1 month', '2 months', '3 months'] },
+    { field_key: 'availability_date', type: 'date',          label: 'Earliest Start Date',           required: false },
+    { field_key: 'previous_application', type: 'yes_no_detail', label: 'Have you applied to Samara Lombok before?', required: true,
+      detail_prompt: 'When and for which role?' },
+    { field_key: 'has_relatives',     type: 'yes_no_detail', label: 'Do you have any relatives currently working at Samara Lombok?', required: true,
+      detail_prompt: 'Please state their name and department.' },
+    { field_key: 'mbti_type',         type: 'mbti',          label: 'MBTI Personality Type',         required: false },
+  ]
+
+  const fixedFields = template?.fixed_fields
+    ? template.fixed_fields.filter(f => f.enabled !== false)
+    : DEFAULT_FIELDS
   const customQuestions = template?.custom_questions || []
 
   return (
