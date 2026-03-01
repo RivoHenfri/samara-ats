@@ -99,24 +99,8 @@ export async function autoScore(applicationId) {
     const app = await fetchFullApp(applicationId)
     if (!app) return
 
-    const parsedCV = await fetchParsedCV(app.candidates.id)
-    const scoringCriteria = await fetchScoringCriteria(app.roles.id)
-    const roleWeights = app.roles?.scoring_weights || null
-    const result = await generateCompatibilityScore(app, parsedCV, scoringCriteria, roleWeights)
-
-    await supabase.from('application_scores').insert({
-      application_id: applicationId,
-      overall_score: result.overall_score,
-      must_have_score: result.must_have_score,
-      nice_to_have_score: result.nice_to_have_score,
-      salary_alignment_score: result.salary_alignment_score,
-      risk_flags: result.risk_flags || [],
-      executive_summary: result.executive_summary || '',
-      interview_focus: result.interview_focus || [],
-      scored_by_name: 'System (Auto)',
-      model_version: SCORE_MODEL,
-      prompt_version: `${SCORE_PROMPT_V} · auto`,
-    })
+    // Trigger the backend Edge Function via database webhook
+    await generateCompatibilityScore(applicationId)
   } catch (err) {
     // Auto-scoring is non-fatal — recruiter can manually trigger from the tab
     console.warn('[aiWorkflow] autoScore failed silently:', err?.message)

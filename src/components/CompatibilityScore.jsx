@@ -18,7 +18,7 @@ import { formatDistanceToNow, format } from 'date-fns'
 
 export function ScoreBadge({ score, size = 'md' }) {
   const color = getScoreColor(score)
-  const bg    = getScoreBg(score)
+  const bg = getScoreBg(score)
   const label = getScoreLabel(score)
 
   if (size === 'sm') {
@@ -81,7 +81,7 @@ function ScoreBar({ label, score, color }) {
 
 function RiskFlagRow({ item }) {
   const color = getSeverityColor(item.severity)
-  const bg    = getSeverityBg(item.severity)
+  const bg = getSeverityBg(item.severity)
   return (
     <div style={{
       display: 'flex', gap: 10, alignItems: 'flex-start',
@@ -115,12 +115,12 @@ function RiskFlagRow({ item }) {
 export default function CompatibilityScore({ app, onScored }) {
   const { profile, isManager } = useAuth()
 
-  const [versions,    setVersions]    = useState([])
+  const [versions, setVersions] = useState([])
   const [selectedIdx, setSelectedIdx] = useState(0)
-  const [generating,  setGenerating]  = useState(false)
-  const [error,       setError]       = useState(null)
-  const [riskOpen,    setRiskOpen]    = useState(true)
-  const [parsedCV,    setParsedCV]    = useState(null)
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState(null)
+  const [riskOpen, setRiskOpen] = useState(true)
+  const [parsedCV, setParsedCV] = useState(null)
 
   useEffect(() => {
     fetchVersions()
@@ -166,42 +166,28 @@ export default function CompatibilityScore({ app, onScored }) {
     setGenerating(true)
     setError(null)
     try {
-      const scoreData  = await generateCompatibilityScore(app, parsedCV)
-      const genCount   = versions.length + 1
-      const versionTag = `${PROMPT_VERSION} · gen ${genCount}`
+      // Trigger the backend Edge Function via database webhook
+      await generateCompatibilityScore(app.id)
 
-      const { error: dbErr } = await supabase
-        .from('application_scores')
-        .insert({
-          application_id:    app.id,
-          overall_score:          scoreData.overall_score,
-          must_have_score:        scoreData.must_have_score,
-          nice_to_have_score:     scoreData.nice_to_have_score,
-          salary_alignment_score: scoreData.salary_alignment_score,
-          risk_flags:             scoreData.risk_flags       || [],
-          executive_summary:      scoreData.executive_summary || '',
-          interview_focus:        scoreData.interview_focus  || [],
-          scored_by_name: profile?.full_name || 'HR',
-          model_version:  MODEL_VERSION,
-          prompt_version: versionTag,
-        })
-
-      if (dbErr) throw new Error(dbErr.message)
-      await fetchVersions()
-      if (onScored) onScored(scoreData.overall_score)
+      // We don't fetchVersions() or insert anything here anymore.
+      // The Edge Function will insert the record into `application_scores`,
+      // which will trigger the realtime subscription (lines 131-140) to auto-refresh the UI.
     } catch (err) {
       setError(err.message || 'Scoring failed. Check your API key and try again.')
+      setGenerating(false)
     }
-    setGenerating(false)
+    // We let the real-time subscription or user interaction turn off the 'generating' state eventually
+    // For a smoother UX, we can just clear it here because we have "autoScoringInProgress" fallback
+    setTimeout(() => setGenerating(false), 2000)
   }
 
-  const current        = versions[selectedIdx]
-  const score          = current?.overall_score ?? null
-  const riskFlags      = current?.risk_flags     || []
+  const current = versions[selectedIdx]
+  const score = current?.overall_score ?? null
+  const riskFlags = current?.risk_flags || []
   const interviewFocus = current?.interview_focus || []
-  const hasHighRisk    = riskFlags.some(r => r.severity === 'high')
-  const hasJobContext  = !!app.roles?.job_context?.trim()
-  const hasCVData      = !!parsedCV
+  const hasHighRisk = riskFlags.some(r => r.severity === 'high')
+  const hasJobContext = !!app.roles?.job_context?.trim()
+  const hasCVData = !!parsedCV
 
   // When in Screening with no score, auto-scoring is running in background
   const autoScoringInProgress = versions.length === 0 && app.stage === 'Screening'
@@ -430,9 +416,9 @@ export default function CompatibilityScore({ app, onScored }) {
           }}>
             Score Breakdown
           </p>
-          <ScoreBar label="Must-Have Match"    score={current?.must_have_score} />
+          <ScoreBar label="Must-Have Match" score={current?.must_have_score} />
           <ScoreBar label="Nice-to-Have Match" score={current?.nice_to_have_score} />
-          <ScoreBar label="Salary Alignment"   score={current?.salary_alignment_score} />
+          <ScoreBar label="Salary Alignment" score={current?.salary_alignment_score} />
           <p style={{ fontSize: 10, color: 'var(--stone-light)', marginTop: 8 }}>
             Weighted: must-have × 0.55 + nice-to-have × 0.25 + salary × 0.20
           </p>
