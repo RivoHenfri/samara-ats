@@ -21,6 +21,7 @@ import CandidateDetailPage from './pages/CandidateDetailPage'
 import CandidateBriefPage from './pages/CandidateBriefPage'
 import RoleSummaryPage from './pages/RoleSummaryPage'
 import ProtectedRoute from './components/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function MainWorkspace() {
   const { user } = useAuth()
@@ -29,56 +30,58 @@ function MainWorkspace() {
 
   return (
     <Layout>
-      <Routes>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/pipeline/:roleId?" element={
-          <ProtectedRoute module="applications" action="read"><KanbanBoard /></ProtectedRoute>
-        } />
-        <Route path="/candidates/:appId/brief" element={
-          <ProtectedRoute module="candidates" action="read"><CandidateBriefPage /></ProtectedRoute>
-        } />
-        <Route path="/candidates/:appId" element={
-          <ProtectedRoute module="candidates" action="read"><CandidateDetailPage /></ProtectedRoute>
-        } />
-        <Route path="/candidates" element={
-          <ProtectedRoute module="candidates" action="read"><CandidatesList /></ProtectedRoute>
-        } />
-        <Route path="/roles/:roleId/summary" element={
-          <ProtectedRoute module="roles" action="read"><RoleSummaryPage /></ProtectedRoute>
-        } />
-        <Route path="/roles/create" element={
-          <ProtectedRoute module="roles" action="insert"><JobCreatorPage /></ProtectedRoute>
-        } />
-        <Route path="/roles" element={
-          <ProtectedRoute module="roles" action="read"><RolesManager /></ProtectedRoute>
-        } />
-        <Route path="/tcow" element={
-          <ProtectedRoute module="settings" action="manage"><TCOWCalculator /></ProtectedRoute>
-        } />
-        <Route path="/analytics" element={
-          <ProtectedRoute module="applications" action="read"><Analytics /></ProtectedRoute>
-        } />
-        <Route path="/import" element={
-          <ProtectedRoute module="candidates" action="insert"><Import /></ProtectedRoute>
-        } />
-        <Route path="/users" element={
-          <ProtectedRoute module="settings" action="manage"><UsersPage /></ProtectedRoute>
-        } />
-        <Route path="/integrations" element={
-          <ProtectedRoute module="settings" action="manage"><IntegrationsManager /></ProtectedRoute>
-        } />
-        <Route path="/employees" element={
-          <ProtectedRoute module="employees" action="manage"><EmployeesPage /></ProtectedRoute>
-        } />
-        <Route path="/rejected" element={
-          <ProtectedRoute module="applications" action="read"><RejectedPoolPage /></ProtectedRoute>
-        } />
-        <Route path="/hired" element={
-          <ProtectedRoute module="applications" action="read"><HiredPoolPage /></ProtectedRoute>
-        } />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/pipeline/:roleId?" element={
+            <ProtectedRoute module="applications" action="read"><KanbanBoard /></ProtectedRoute>
+          } />
+          <Route path="/candidates/:appId/brief" element={
+            <ProtectedRoute module="candidates" action="read"><CandidateBriefPage /></ProtectedRoute>
+          } />
+          <Route path="/candidates/:appId" element={
+            <ProtectedRoute module="candidates" action="read"><CandidateDetailPage /></ProtectedRoute>
+          } />
+          <Route path="/candidates" element={
+            <ProtectedRoute module="candidates" action="read"><CandidatesList /></ProtectedRoute>
+          } />
+          <Route path="/roles/:roleId/summary" element={
+            <ProtectedRoute module="roles" action="read"><RoleSummaryPage /></ProtectedRoute>
+          } />
+          <Route path="/roles/create" element={
+            <ProtectedRoute module="roles" action="insert"><JobCreatorPage /></ProtectedRoute>
+          } />
+          <Route path="/roles" element={
+            <ProtectedRoute module="roles" action="read"><RolesManager /></ProtectedRoute>
+          } />
+          <Route path="/tcow" element={
+            <ProtectedRoute module="settings" action="manage"><TCOWCalculator /></ProtectedRoute>
+          } />
+          <Route path="/analytics" element={
+            <ProtectedRoute module="applications" action="read"><Analytics /></ProtectedRoute>
+          } />
+          <Route path="/import" element={
+            <ProtectedRoute module="candidates" action="insert"><Import /></ProtectedRoute>
+          } />
+          <Route path="/users" element={
+            <ProtectedRoute module="settings" action="manage"><UsersPage /></ProtectedRoute>
+          } />
+          <Route path="/integrations" element={
+            <ProtectedRoute module="settings" action="manage"><IntegrationsManager /></ProtectedRoute>
+          } />
+          <Route path="/employees" element={
+            <ProtectedRoute module="employees" action="manage"><EmployeesPage /></ProtectedRoute>
+          } />
+          <Route path="/rejected" element={
+            <ProtectedRoute module="applications" action="read"><RejectedPoolPage /></ProtectedRoute>
+          } />
+          <Route path="/hired" element={
+            <ProtectedRoute module="applications" action="read"><HiredPoolPage /></ProtectedRoute>
+          } />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </Layout>
   )
 }

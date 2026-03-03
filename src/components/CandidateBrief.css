@@ -1,0 +1,804 @@
+.candidate-brief-wrapper {
+  --teal: #2A7B6F;
+  --teal-light: #EAF4F2;
+  --teal-mid: #C5E4DF;
+  --amber: #E8A945;
+  --amber-light: #FDF4E3;
+  --red: #C0392B;
+  --red-light: #FDECEA;
+  --text: #1A1A1A;
+  --text-muted: #6B7280;
+  --border: #E5E9EB;
+  --bg: #F7F9F9;
+  --white: #FFFFFF;
+  --radius: 10px;
+
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 24px 0;
+  /* vertical breathing room captured in PDF */
+}
+
+.candidate-brief-wrapper * {
+  box-sizing: border-box;
+}
+
+.candidate-brief-wrapper .page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 17px;
+  /* horizontal gutters within the A4 capture */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── HERO ── */
+.candidate-brief-wrapper .hero {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.candidate-brief-wrapper .hero-left {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.candidate-brief-wrapper .avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.3;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+}
+
+.candidate-brief-wrapper .avatar svg {
+  opacity: 0.4;
+}
+
+.candidate-brief-wrapper .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 9px;
+}
+
+.candidate-brief-wrapper .hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-brief-wrapper .division-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal);
+  background: var(--teal-light);
+  border: 1px solid var(--teal-mid);
+  border-radius: 4px;
+  padding: 2px 8px;
+  width: fit-content;
+  line-height: 1.5;
+  display: inline-block;
+}
+
+.candidate-brief-wrapper .hero h1 {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.candidate-brief-wrapper .hero .role {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.candidate-brief-wrapper .hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.candidate-brief-wrapper .status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  line-height: 1.5;
+  display: inline-block;
+}
+
+.candidate-brief-wrapper .apply-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── SECTION CARD ── */
+.candidate-brief-wrapper .card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 32px;
+}
+
+.candidate-brief-wrapper .section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── PROFILE GRID ── */
+.candidate-brief-wrapper .profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.candidate-brief-wrapper .profile-item {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.candidate-brief-wrapper .profile-item-col-3 {
+  border-right: none;
+}
+
+.candidate-brief-wrapper .profile-item-last-row {
+  border-bottom: none;
+}
+
+.candidate-brief-wrapper .profile-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.candidate-brief-wrapper .profile-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.candidate-brief-wrapper .profile-value a {
+  color: var(--teal);
+  text-decoration: none;
+}
+
+.candidate-brief-wrapper .profile-value.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── SUMMARY METRICS ── */
+.candidate-brief-wrapper .metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.candidate-brief-wrapper .metric-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.candidate-brief-wrapper .metric-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--teal);
+  font-family: 'DM Mono', monospace;
+  line-height: 1.2;
+}
+
+.candidate-brief-wrapper .metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* ── SKILLS ── */
+.candidate-brief-wrapper .skills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.candidate-brief-wrapper .skill-tag {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--teal-light);
+  color: var(--teal);
+  border: 1px solid var(--teal-mid);
+  line-height: 1.5;
+  display: inline-block;
+}
+
+/* ── TIMELINE ── */
+.candidate-brief-wrapper .timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.candidate-brief-wrapper .timeline-item {
+  display: flex;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.candidate-brief-wrapper .timeline-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.candidate-brief-wrapper .timeline-item:first-child {
+  padding-top: 0;
+}
+
+.candidate-brief-wrapper .timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--teal);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.candidate-brief-wrapper .timeline-dot.current {
+  box-shadow: 0 0 0 3px var(--teal-mid);
+}
+
+.candidate-brief-wrapper .timeline-content {
+  flex: 1;
+}
+
+.candidate-brief-wrapper .timeline-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.candidate-brief-wrapper .timeline-company {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  line-height: 1.4;
+}
+
+.candidate-brief-wrapper .timeline-location {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.candidate-brief-wrapper .timeline-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  align-items: center;
+}
+
+.candidate-brief-wrapper .tenure-pill {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 7px;
+  display: inline-block;
+  line-height: 1.5;
+}
+
+/* ── RESPONSIBILITIES ── */
+.candidate-brief-wrapper .responsibilities {
+  margin-top: 10px;
+}
+
+.candidate-brief-wrapper .timeline-responsibilities {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+
+.candidate-brief-wrapper .timeline-responsibilities li {
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.candidate-brief-wrapper .timeline-responsibilities li:last-child {
+  margin-bottom: 0;
+}
+
+/* ── CV FLAGS ── */
+.candidate-brief-wrapper .flags-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-brief-wrapper .flag-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 3px solid;
+}
+
+.candidate-brief-wrapper .flag-item.warning {
+  background: var(--amber-light);
+  border-color: var(--amber);
+}
+
+.candidate-brief-wrapper .flag-item.danger {
+  background: var(--red-light);
+  border-color: var(--red);
+}
+
+.candidate-brief-wrapper .flag-icon {
+  font-size: 14px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.candidate-brief-wrapper .flag-text {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ── EDUCATION ── */
+.candidate-brief-wrapper .edu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.candidate-brief-wrapper .edu-row:last-child {
+  margin-bottom: 0;
+}
+
+.candidate-brief-wrapper .edu-degree {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.candidate-brief-wrapper .edu-school {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.candidate-brief-wrapper .edu-gpa {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal);
+  background: var(--teal-light);
+  border: 1px solid var(--teal-mid);
+  padding: 2px 8px;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.candidate-brief-wrapper .edu-year {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── CERTIFICATES ── */
+.candidate-brief-wrapper .cert-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.candidate-brief-wrapper .cert-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.candidate-brief-wrapper .cert-item:first-child {
+  padding-top: 0;
+}
+
+.candidate-brief-wrapper .cert-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.candidate-brief-wrapper .cert-issuer {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.candidate-brief-wrapper .cert-year {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── FOOTER ── */
+.candidate-brief-wrapper .footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  padding: 0 4px;
+}
+
+.candidate-brief-wrapper .location-not-stated {
+  font-style: italic;
+  color: #9CA3AF;
+}
+
+/* ── QUESTION LIST ── */
+.candidate-brief-wrapper .q-cat-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--teal);
+  margin-bottom: 8px;
+}
+
+.candidate-brief-wrapper .q-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.candidate-brief-wrapper .q-list:last-child {
+  margin-bottom: 0;
+}
+
+.candidate-brief-wrapper .q-item {
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.candidate-brief-wrapper .q-text {
+  font-size: 12.5px;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.candidate-brief-wrapper .q-num {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 6px;
+  font-family: 'DM Mono', monospace;
+}
+
+.candidate-brief-wrapper .q-rationale {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+/* ── PRESCREENING/AI SCORES ── */
+.candidate-brief-wrapper .score-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.candidate-brief-wrapper .score-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 90px;
+  font-weight: 500;
+}
+
+.candidate-brief-wrapper .score-track {
+  flex: 1;
+  height: 7px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.candidate-brief-wrapper .score-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.candidate-brief-wrapper .score-fill.good {
+  background: var(--teal);
+}
+
+.candidate-brief-wrapper .score-fill.mid {
+  background: var(--amber);
+}
+
+.candidate-brief-wrapper .score-fill.bad {
+  background: var(--red);
+}
+
+.candidate-brief-wrapper .score-value-text {
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 700;
+  min-width: 28px;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+}
+
+.candidate-brief-wrapper .score-circle-container {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.candidate-brief-wrapper .score-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--white);
+  font-family: 'DM Mono', monospace;
+}
+
+.candidate-brief-wrapper .score-circle.good {
+  background: var(--teal);
+}
+
+.candidate-brief-wrapper .score-circle.mid {
+  background: var(--amber);
+}
+
+.candidate-brief-wrapper .score-circle.bad {
+  background: var(--red);
+}
+
+.candidate-brief-wrapper .pre-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.candidate-brief-wrapper .pre-value {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.candidate-brief-wrapper .pre-value.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.candidate-brief-wrapper .ol-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-brief-wrapper .ol-item {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.candidate-brief-wrapper .ol-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--teal);
+  background: var(--teal-light);
+  border: 1px solid var(--teal-mid);
+  border-radius: 12px;
+  min-width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── JOB RESPONSIBILITIES ── */
+.candidate-brief-wrapper .timeline-responsibilities {
+  margin: 8px 0 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  list-style: disc;
+}
+
+.candidate-brief-wrapper .timeline-responsibilities li {
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.55;
+  padding-left: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRINT / PDF EXPORT STYLES
+   Triggered by adding class `printing-brief` to <body> before window.print().
+   The export JS also adds `brief-ancestor` to every parent element so we can
+   force them all to full width, breaking out of the sidebar flex layout.
+───────────────────────────────────────────────────────────────────────────── */
+@media print {
+
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm;
+  }
+
+  /* ── Force every ancestor container to fill full page width ──────────────
+     Without this, the sidebar layout imposes a narrow flex-child width on  the
+     brief even though the sidebar is hidden. */
+  body.printing-brief .brief-ancestor {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    position: static !important;
+    transform: none !important;
+  }
+
+  /* ── Hide everything except the brief ───────────────────────────────────── */
+  body.printing-brief * {
+    visibility: hidden;
+  }
+
+  body.printing-brief .candidate-brief-wrapper,
+  body.printing-brief .candidate-brief-wrapper * {
+    visibility: visible;
+  }
+
+  /* ── Brief wrapper: full width, normal flow (NOT fixed) ─────────────────── */
+  body.printing-brief .candidate-brief-wrapper {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #F7F9F9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Inner page: full width, compact gap ────────────────────────────────── */
+  body.printing-brief .candidate-brief-wrapper .page {
+    max-width: 100% !important;
+    padding: 0 !important;
+    gap: 14px;
+  }
+
+  /* ── Preserve backgrounds & borders on cards ────────────────────────────── */
+  body.printing-brief .candidate-brief-wrapper .card,
+  body.printing-brief .candidate-brief-wrapper .hero {
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Prevent orphaned rows ──────────────────────────────────────────────── */
+  body.printing-brief .candidate-brief-wrapper .timeline-item,
+  body.printing-brief .candidate-brief-wrapper .edu-row,
+  body.printing-brief .candidate-brief-wrapper .cert-item,
+  body.printing-brief .candidate-brief-wrapper .flag-item,
+  body.printing-brief .candidate-brief-wrapper .metric-box,
+  body.printing-brief .candidate-brief-wrapper .score-bar-row,
+  body.printing-brief .candidate-brief-wrapper .q-item {
+    break-inside: avoid;
+  }
+
+  /* ── Hide irrelevant UI elements ────────────────────────────────────────── */
+  body.printing-brief .candidate-brief-wrapper .avatar span {
+    display: none;
+  }
+
+  body.printing-brief .candidate-brief-wrapper .footer {
+    display: none;
+  }
+}

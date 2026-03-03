@@ -14,7 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Anthropic details
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_KEY') || Deno.env.get('ANTHROPIC_API_KEY')
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
-const MODEL_VERSION = 'claude-3-5-sonnet-20241022' // Ensure latest stable model
+const MODEL_VERSION = 'claude-sonnet-4-6-20260217' // Current latest Sonnet 4.6
 
 // Build prompt (ported from original frontend logic)
 function buildPrompt(app: any, parsedCV: any = null, scoringCriteria: any = null, weights: any = null) {
@@ -181,17 +181,26 @@ serve(async (req: Request) => {
 
     if (appErr || !fullApp) throw new Error('Could not fetch application context')
 
-    // Fetch CV or scoring criteria optionally? 
-    // Usually these might exist in jobs table or cv_sources table. Since we don't know the exact schema, we pass nulls safely.
-    // However, if roles table has scoring_criteria, we attempt to parse it:
+    // 2.1 Fetch active CV data if available
+    const { data: cvSource } = await supabaseAdmin
+      .from('cv_sources')
+      .select('parsed_data')
+      .eq('candidate_id', candidateId)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    const parsedCV = cvSource?.parsed_data || null
+
+    // 2.2 Fetch scoring requirements if they exist in a separate table or roles
+    // (Existing logic check)
     let structuredCriteria = null
-    const rawCriteriaInfo = (fullApp.roles as any).scoring_requirements // Attempt standard structure based on previous prompts
+    const rawCriteriaInfo = (fullApp.roles as any).scoring_requirements
     if (rawCriteriaInfo && typeof rawCriteriaInfo === 'object') {
       structuredCriteria = rawCriteriaInfo
     }
 
     // 3. Build the prompt
-    const promptString = buildPrompt(fullApp, null, structuredCriteria, (fullApp.roles as any).scoring_weights)
+    const promptString = buildPrompt(fullApp, parsedCV, structuredCriteria, (fullApp.roles as any).scoring_weights)
 
     // 4. Call Anthropic API
     if (!ANTHROPIC_KEY) throw new Error('Anthropic API key is missing on the server')

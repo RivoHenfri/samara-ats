@@ -30,6 +30,7 @@ export default function KanbanBoard() {
   const [applications, setApplications] = useState([])
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [dragging, setDragging] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
@@ -45,6 +46,23 @@ export default function KanbanBoard() {
     : searchParamRoles
   const deptFilters = searchParams.get('depts')?.split(',').filter(Boolean) || []
   const originFilters = searchParams.get('origins')?.split(',').filter(Boolean) || []
+
+  // Local state for debounced search input
+  const [searchInput, setSearchInput] = useState(search)
+
+  useEffect(() => {
+    setSearchInput(search)
+  }, [search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== search) {
+        updateFilters('q', searchInput)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
 
   useEffect(() => {
     // Fetch roles for the filter dropdown
@@ -88,6 +106,7 @@ export default function KanbanBoard() {
       setApplications(data || [])
     }
     setLoading(false)
+    setInitialLoad(false)
   }, [search, roleFilters.join(','), deptFilters.join(','), originFilters.join(',')])
 
   useEffect(() => {
@@ -224,7 +243,7 @@ export default function KanbanBoard() {
   const staleCount = stagnationAlerts.length
   const staleByStage = groupByStage(stagnationAlerts)
 
-  if (loading) return (
+  if (initialLoad) return (
     <div className="loading-state">
       <span className="spinner" />
       Loading pipeline…
@@ -266,8 +285,8 @@ export default function KanbanBoard() {
               <Search size={13} />
               <input
                 type="text"
-                value={search}
-                onChange={e => updateFilters('q', e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
                 placeholder="Search candidates…"
                 className="search-input"
               />

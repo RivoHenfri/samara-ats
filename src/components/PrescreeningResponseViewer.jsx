@@ -21,12 +21,12 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 
 const statusConfig = {
-  not_sent:   { label: 'Not Sent',   color: '#9A8F80', bg: 'rgba(154,143,128,0.1)' },
-  pending:    { label: 'Pending',    color: '#B8860B', bg: 'rgba(184,134,11,0.08)' },
-  sent:       { label: 'Sent',       color: '#4A7C74', bg: 'rgba(74,124,116,0.08)' },
-  started:    { label: 'In Progress',color: '#B8860B', bg: 'rgba(184,134,11,0.08)' },
-  completed:  { label: 'Completed',  color: '#4A7C74', bg: 'rgba(74,124,116,0.12)' },
-  expired:    { label: 'Expired',    color: '#C0614A', bg: 'rgba(192,97,74,0.08)' },
+  not_sent: { label: 'Not Sent', color: '#9A8F80', bg: 'rgba(154,143,128,0.1)' },
+  pending: { label: 'Pending', color: '#B8860B', bg: 'rgba(184,134,11,0.08)' },
+  sent: { label: 'Sent', color: '#4A7C74', bg: 'rgba(74,124,116,0.08)' },
+  started: { label: 'In Progress', color: '#B8860B', bg: 'rgba(184,134,11,0.08)' },
+  completed: { label: 'Completed', color: '#4A7C74', bg: 'rgba(74,124,116,0.12)' },
+  expired: { label: 'Expired', color: '#C0614A', bg: 'rgba(192,97,74,0.08)' },
 }
 
 function displayIDR(num) {
@@ -76,6 +76,44 @@ export default function PrescreeningResponseViewer({ app, compact = false }) {
     await navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleRefreshTemplate = async () => {
+    setPreparing(true)
+    try {
+      const roleId = app.roles?.id || app.role_id
+      const { data: template } = await supabase
+        .from('prescreening_templates')
+        .select('*')
+        .eq('role_id', roleId)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      await supabase
+        .from('prescreening_responses')
+        .update({
+          template_id: template?.id || null,
+          template_snapshot: template ? {
+            fixed_fields: template.fixed_fields,
+            custom_questions: template.custom_questions,
+          } : null
+        })
+        .eq('id', response.id)
+
+      const { data: updatedResp } = await supabase
+        .from('prescreening_responses')
+        .select('*')
+        .eq('application_id', app.id)
+        .maybeSingle()
+
+      setResponse(updatedResp)
+    } catch (err) {
+      console.error('Failed to refresh template:', err)
+      alert('Failed to refresh questions. Please try again.')
+    }
+    setPreparing(false)
   }
 
   if (loading) {
@@ -148,6 +186,10 @@ export default function PrescreeningResponseViewer({ app, compact = false }) {
           >
             <ExternalLink size={12} /> Preview Form
           </a>
+          <button onClick={handleRefreshTemplate} disabled={preparing} className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 12px', gap: 5 }}>
+            {preparing ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={12} />}
+            Refresh Questions
+          </button>
         </div>
       </div>
     )

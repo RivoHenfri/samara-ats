@@ -70,7 +70,7 @@ export default function Analytics() {
   )
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* ── Topbar ── */}
       <div className="topbar">
         <h1 className="page-title">Analytics</h1>
@@ -83,16 +83,16 @@ export default function Analytics() {
             <p style={{ fontSize: 12 }}>Add candidates to start seeing analytics.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
 
             {/* Pipeline Funnel — full width */}
-            <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="card" style={{ width: '100%' }}>
               <div className="card-header">
                 <span className="card-title">Pipeline Funnel</span>
                 <span style={{ fontSize: 11, color: 'var(--stone)' }}>Candidates per stage</span>
               </div>
-              <div style={{ padding: '16px 8px 8px' }}>
-                <ResponsiveContainer width="100%" height={220}>
+              <div style={{ padding: '24px 16px 16px' }}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={funnelData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                     <XAxis
                       dataKey="name"
@@ -113,112 +113,116 @@ export default function Analytics() {
               </div>
             </div>
 
-            {/* Conversion Rates */}
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">Conversion Rates</span>
-                <span style={{ fontSize: 11, color: 'var(--stone)' }}>% advancing to next stage</span>
-              </div>
-              <div style={{ padding: '16px 8px 8px' }}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart
-                    data={conversionData}
-                    layout="vertical"
-                    margin={{ top: 0, right: 32, left: 10, bottom: 0 }}
-                  >
-                    <XAxis
-                      type="number"
-                      domain={[0, 100]}
-                      tick={{ fill: 'var(--stone)', fontSize: 10 }}
-                      unit="%"
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fill: 'var(--stone)', fontSize: 9.5 }}
-                      width={115}
-                    />
-                    <Tooltip
-                      {...tooltipStyle}
-                      formatter={(v) => [`${v}%`, 'Rate']}
-                    />
-                    <Bar dataKey="rate" fill="var(--gold)" radius={[0, 5, 5, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            {/* Bottom Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
 
-            {/* Right column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-              {/* Time to Hire */}
-              <div className="card">
+              {/* Conversion Rates */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="card-header">
-                  <span className="card-title">Time to Hire</span>
+                  <span className="card-title">Conversion Rates</span>
+                  <span style={{ fontSize: 11, color: 'var(--stone)' }}>% advancing to next stage</span>
                 </div>
-                <div style={{ padding: '20px' }}>
-                  {avgDays !== null ? (
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-                      <span style={{
-                        fontFamily: 'var(--serif)',
-                        fontSize: 52,
-                        fontWeight: 300,
-                        color: 'var(--teal)',
-                        lineHeight: 1,
-                      }}>
-                        {avgDays}
-                      </span>
-                      <span style={{ fontSize: 13, color: 'var(--stone)', marginBottom: 6 }}>
-                        days average
-                      </span>
-                    </div>
-                  ) : (
-                    <p style={{ color: 'var(--stone-light)', fontSize: 12.5 }}>
-                      No hired candidates yet.
+                <div style={{ padding: '24px 16px 16px', flex: 1 }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={conversionData}
+                      layout="vertical"
+                      margin={{ top: 0, right: 32, left: 10, bottom: 0 }}
+                    >
+                      <XAxis
+                        type="number"
+                        domain={[0, 100]}
+                        tick={{ fill: 'var(--stone)', fontSize: 10 }}
+                        unit="%"
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        tick={{ fill: 'var(--stone)', fontSize: 9.5 }}
+                        width={115}
+                      />
+                      <Tooltip
+                        {...tooltipStyle}
+                        formatter={(v) => [`${v}%`, 'Rate']}
+                      />
+                      <Bar dataKey="rate" fill="var(--gold)" radius={[0, 5, 5, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                {/* Time to Hire */}
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Time to Hire</span>
+                  </div>
+                  <div style={{ padding: '20px' }}>
+                    {avgDays !== null ? (
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                        <span style={{
+                          fontFamily: 'var(--serif)',
+                          fontSize: 52,
+                          fontWeight: 300,
+                          color: 'var(--teal)',
+                          lineHeight: 1,
+                        }}>
+                          {avgDays}
+                        </span>
+                        <span style={{ fontSize: 13, color: 'var(--stone)', marginBottom: 6 }}>
+                          days average
+                        </span>
+                      </div>
+                    ) : (
+                      <p style={{ color: 'var(--stone-light)', fontSize: 12.5 }}>
+                        No hired candidates yet.
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: 'var(--stone-light)', marginTop: 6 }}>
+                      Based on {hiredApps.length} hired candidate{hiredApps.length !== 1 ? 's' : ''}
                     </p>
-                  )}
-                  <p style={{ fontSize: 11, color: 'var(--stone-light)', marginTop: 6 }}>
-                    Based on {hiredApps.length} hired candidate{hiredApps.length !== 1 ? 's' : ''}
-                  </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* By Department */}
-              <div className="card" style={{ flex: 1 }}>
-                <div className="card-header">
-                  <span className="card-title">By Department</span>
+                {/* By Department */}
+                <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div className="card-header">
+                    <span className="card-title">By Department</span>
+                  </div>
+                  <div style={{ padding: '24px 16px 16px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {deptData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={deptData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={32}
+                            outerRadius={58}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {deptData.map((_, i) => (
+                              <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip {...tooltipStyle} />
+                          <Legend
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: 11, color: 'var(--stone)' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p style={{ color: 'var(--stone-light)', fontSize: 12 }}>No data yet.</p>
+                    )}
+                  </div>
                 </div>
-                <div style={{ padding: '16px 8px 8px' }}>
-                  {deptData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={140}>
-                      <PieChart>
-                        <Pie
-                          data={deptData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={32}
-                          outerRadius={58}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {deptData.map((_, i) => (
-                            <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip {...tooltipStyle} />
-                        <Legend
-                          iconType="circle"
-                          iconSize={8}
-                          wrapperStyle={{ fontSize: 11, color: 'var(--stone)' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p style={{ color: 'var(--stone-light)', fontSize: 12 }}>No data yet.</p>
-                  )}
-                </div>
-              </div>
 
+              </div>
             </div>
 
           </div>

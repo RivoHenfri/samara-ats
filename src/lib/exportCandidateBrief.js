@@ -1,40 +1,89 @@
 /**
  * exportCandidateBrief.js
  *
- * Client-side PDF generation for the Candidate Brief.
- * Uses html2pdf.js to convert the CandidateBrief DOM element to a PDF.
- */
-
-/**
- * Export the candidate brief as a downloadable PDF.
+ * Exports the Candidate Brief as a PDF using the browser's native print engine.
  *
- * @param {HTMLElement} element - The CandidateBrief DOM element to capture
- * @param {string} candidateName - Used in the filename
- * @param {string} roleName - Used in the filename
+ * BLANK PAGE 1 PROBLEM:
+ *   When we force ancestor flex containers to `display: block`, siblings of
+ *   those ancestors (e.g. the 100vh sidebar) become tall block elements that
+ *   push the brief content to page 2. We fix this by also hiding all siblings
+ *   of every ancestor before printing, then restoring them afterwards.
  */
-export async function exportBriefAsPDF(element, candidateName, roleName) {
-  // Dynamically import html2pdf.js to avoid bundling it if unused
-  const html2pdf = (await import('html2pdf.js')).default
+export function exportBriefAsPDF(element) {
+  return new Promise((resolve) => {
 
-  const safeName = (candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_')
-  const safeRole = (roleName || 'Role').replace(/[^a-zA-Z0-9]/g, '_')
+    const taggedAncestors = []    // ancestors that get the CSS class
+    const overflowFixes = []      // { el, overflow, overflowX, overflowY, maxHeight, height }
+    const siblingFixes = []       // { el, display }
 
-  const options = {
-    margin: [10, 10, 10, 10],
-    filename: `${safeName}_${safeRole}_Brief.pdf`,
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      letterRendering: true,
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait',
-    },
-    pagebreak: { mode: 'avoid-all', before: '.page-break' },
-  }
+    // Walk up every ancestor from the brief wrapper to <html>
+    let el = element.parentElement
+    while (el && el !== document.documentElement) {
 
-  await html2pdf().set(options).from(element).save()
+      // 1. Tag for the CSS rule that forces full width
+      el.classList.add('brief-ancestor')
+      taggedAncestors.push(el)
+
+      // 2. Lift overflow / height clamps so content flows across pages
+      overflowFixes.push({
+        el,
+        overflow: el.style.overflow,
+        overflowX: el.style.overflowX,
+        overflowY: el.style.overflowY,
+        maxHeight: el.style.maxHeight,
+        height: el.style.height,
+      })
+      el.style.overflow = 'visible'
+      el.style.overflowX = 'visible'
+      el.style.overflowY = 'visible'
+      el.style.maxHeight = 'none'
+      el.style.height = 'auto'
+
+      // 3. Hide every sibling of this ancestor so they don't create blank pages.
+      //    e.g. the sidebar (height: 100vh) would push content to page 2 once
+      //    the parent flex row becomes a block container.
+      if (el.parentElement) {
+        for (const sibling of el.parentElement.children) {
+          if (sibling !== el) {
+            siblingFixes.push({ el: sibling, display: sibling.style.display })
+            sibling.style.display = 'none'
+          }
+        }
+      }
+
+      el = el.parentElement
+    }
+
+    // Activate print CSS
+    document.body.classList.add('printing-brief')
+
+    requestAnimationFrame(() => {
+      window.print()
+
+      const cleanup = () => {
+        // Remove print class
+        document.body.classList.remove('printing-brief')
+
+        // Remove ancestor CSS tags
+        taggedAncestors.forEach(a => a.classList.remove('brief-ancestor'))
+
+        // Restore sibling display values
+        siblingFixes.forEach(({ el, display }) => { el.style.display = display })
+
+        // Restore overflow / height on ancestors
+        overflowFixes.forEach(({ el, overflow, overflowX, overflowY, maxHeight, height }) => {
+          el.style.overflow = overflow
+          el.style.overflowX = overflowX
+          el.style.overflowY = overflowY
+          el.style.maxHeight = maxHeight
+          el.style.height = height
+        })
+
+        window.removeEventListener('afterprint', cleanup)
+        resolve()
+      }
+
+      window.addEventListener('afterprint', cleanup)
+    })
+  })
 }

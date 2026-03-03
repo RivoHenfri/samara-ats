@@ -135,6 +135,7 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
   const [cvLink, setCvLink] = useState('')
   const [scanning, setScanning] = useState(false)
   const [scanned, setScanned] = useState(false)
+  const [skipAI, setSkipAI] = useState(false)
   const [parsedCVData, setParsedCVData] = useState(null)      // Full AI extraction stored in cv_sources
   const fileRef = useRef()
 
@@ -172,13 +173,13 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
 
     setError(null)
     setCvFile(file)
+    setParsedCVData(null) // Clear any previous parsed data when selecting a new file
+    setScanned(false)
 
-    // Only scan PDFs with Claude AI
-    if (file.type !== 'application/pdf') return
+    // Only scan PDFs with Claude AI (and if skipAI is false)
+    if (file.type !== 'application/pdf' || skipAI) return
 
     setScanning(true)
-    setScanned(false)
-    setParsedCVData(null)
 
     const reader = new FileReader()
     reader.onload = async (ev) => {
@@ -358,6 +359,25 @@ export default function AddCandidateModal({ onClose, onSuccess }) {
               {/* Upload panel */}
               {cvMode === 'upload' && (
                 <div style={{ border: '1px solid var(--sand-dark)', borderRadius: '0 0 6px 6px', overflow: 'hidden' }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--sand-dark)', background: '#fafaf9' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--stone)', cursor: scanning ? 'not-allowed' : 'pointer', opacity: scanning ? 0.6 : 1 }}>
+                      <input
+                        type="checkbox"
+                        checked={skipAI}
+                        onChange={e => {
+                          setSkipAI(e.target.checked)
+                          // Clear scanned data if they decide to skip AI after extraction
+                          if (e.target.checked && scanned) {
+                            setParsedCVData(null)
+                            setScanned(false)
+                          }
+                        }}
+                        disabled={scanning}
+                        style={{ margin: 0, accentColor: 'var(--teal)' }}
+                      />
+                      Upload without AI extraction (enter details manually)
+                    </label>
+                  </div>
                   <input
                     ref={fileRef}
                     type="file"

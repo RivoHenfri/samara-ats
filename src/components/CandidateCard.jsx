@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Clock, MessageCircle, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import CandidateDetail from './CandidateDetail'
 import { ScoreBadge } from './CompatibilityScore'
@@ -99,6 +100,7 @@ function deptTag(dept) {
 export default function CandidateCard({ app, onDragStart, selected, onSelect }) {
   if (!app) return null
 
+  const navigate = useNavigate()
   const [showDetail, setShowDetail] = useState(false)
   const [noteCount, setNoteCount] = useState(0)
   const [score, setScore] = useState(undefined) // undefined = not fetched yet, null = no score
@@ -211,6 +213,22 @@ export default function CandidateCard({ app, onDragStart, selected, onSelect }) 
                 {noteCount}
               </button>
             )}
+
+            {/* View Brief */}
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/candidates/${app.id}/brief`) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                color: 'var(--stone)', background: 'none', border: 'none',
+                cursor: 'pointer', fontSize: 10,
+                transition: 'color 0.15s',
+              }}
+              onMouseOver={e => e.currentTarget.style.color = 'var(--teal)'}
+              onMouseOut={e => e.currentTarget.style.color = 'var(--stone)'}
+              title="View Brief"
+            >
+              <FileText size={12} />
+            </button>
 
             {/* Time indicator */}
             {stale ? (

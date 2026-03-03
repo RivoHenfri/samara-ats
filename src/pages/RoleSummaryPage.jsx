@@ -29,9 +29,9 @@ const VERDICT_OPTIONS = [
 ]
 
 const VERDICT_STYLES = {
-  passed:              { background: 'rgba(74,124,116,0.12)',  color: '#4A7C74' },
-  failed:              { background: 'rgba(192,97,74,0.12)',   color: '#C0614A' },
-  passed_with_concern: { background: 'rgba(184,150,90,0.12)',  color: '#8A6010' },
+  passed: { background: 'rgba(74,124,116,0.12)', color: '#4A7C74' },
+  failed: { background: 'rgba(192,97,74,0.12)', color: '#C0614A' },
+  passed_with_concern: { background: 'rgba(184,150,90,0.12)', color: '#8A6010' },
 }
 
 const VERDICT_LABELS = {
@@ -50,12 +50,12 @@ const PRESCREEN_LABELS = {
 }
 
 const PRESCREEN_STYLES = {
-  not_sent:   { background: 'rgba(154,143,128,0.10)', color: '#9A8F80' },
-  pending:    { background: 'rgba(184,150,90,0.10)',   color: '#8A6010' },
-  sent:       { background: 'rgba(74,124,116,0.10)',   color: '#4A7C74' },
-  started:    { background: 'rgba(74,124,116,0.15)',   color: '#4A7C74' },
-  completed:  { background: 'rgba(74,124,116,0.20)',   color: '#2F5B54' },
-  expired:    { background: 'rgba(192,97,74,0.10)',    color: '#C0614A' },
+  not_sent: { background: 'rgba(154,143,128,0.10)', color: '#9A8F80' },
+  pending: { background: 'rgba(184,150,90,0.10)', color: '#8A6010' },
+  sent: { background: 'rgba(74,124,116,0.10)', color: '#4A7C74' },
+  started: { background: 'rgba(74,124,116,0.15)', color: '#4A7C74' },
+  completed: { background: 'rgba(74,124,116,0.20)', color: '#2F5B54' },
+  expired: { background: 'rgba(192,97,74,0.10)', color: '#C0614A' },
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export default function RoleSummaryPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: '0 28px 40px' }}>
+    <div style={{ padding: '0 28px 40px', flex: 1, overflowY: 'auto' }}>
 
       {/* ── Top bar ── */}
       <div style={{

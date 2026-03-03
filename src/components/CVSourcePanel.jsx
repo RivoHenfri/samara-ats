@@ -21,7 +21,7 @@ async function parseCVWithClaude(base64Data, mimeType) {
   const { data, error } = await supabase.functions.invoke('claude-proxy', {
     body: {
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 4096,
       beta: 'pdfs-2024-09-25',
       messages: [{
         role: 'user',
@@ -32,7 +32,7 @@ async function parseCVWithClaude(base64Data, mimeType) {
           },
           {
             type: 'text',
-            text: `Analyze this CV/resume thoroughly. Return ONLY a valid JSON object — no explanation, no markdown fences:
+            text: `Analyze this CV/resume thoroughly. CRITICAL INSTRUCTION: For EACH job in employment_history, you MUST extract every single bullet point into the "responsibilities" array EXACTLY as written in the CV. Do not skip, abbreviate, or summarize them. Return ONLY a valid JSON object — no explanation, no markdown fences:
 {
   "full_name": "string or empty",
   "whatsapp": "phone digits only or empty",
@@ -42,7 +42,7 @@ async function parseCVWithClaude(base64Data, mimeType) {
   "skills": ["array", "of", "skill", "strings"],
   "experience_years": null or total years of work experience as number,
   "employment_history": [
-    { "company": "string", "role": "string", "start": "YYYY-MM or empty", "end": "YYYY-MM or Present", "duration_months": number }
+    { "company": "string", "role": "string", "start": "YYYY-MM or empty", "end": "YYYY-MM or Present", "duration_months": number, "responsibilities": ["exact bullet point 1", "exact bullet point 2", "etc"] }
   ],
   "education": [
     { "institution": "string", "degree": "string", "field": "string", "year": null or number }
@@ -51,7 +51,7 @@ async function parseCVWithClaude(base64Data, mimeType) {
     { "from": "YYYY-MM", "to": "YYYY-MM", "duration_months": number }
   ],
   "average_tenure_months": null or number,
-  "flags": ["risk signal strings — e.g. 'Frequent job changes (avg < 12 months)', 'Employment gap detected (> 3 months)', 'No formal education listed'"]
+  "flags": ["risk signal strings"]
 }`,
           },
         ],
@@ -123,25 +123,26 @@ function ParsedRow({ label, value }) {
 //   canEdit      — boolean (Admin/Manager only)
 export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
   const { user } = useAuth()
-  const [sources,         setSources]         = useState([])
-  const [loading,         setLoading]         = useState(true)
-  const [inputMode,       setInputMode]       = useState(null) // null | 'upload' | 'link'
-  const [pendingFile,     setPendingFile]     = useState(null)
-  const [pendingLink,     setPendingLink]     = useState('')
-  const [uploading,       setUploading]       = useState(false)
-  const [parsing,         setParsing]         = useState(false)
+  const [sources, setSources] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [inputMode, setInputMode] = useState(null) // null | 'upload' | 'link'
+  const [pendingFile, setPendingFile] = useState(null)
+  const [pendingLink, setPendingLink] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [parsing, setParsing] = useState(false)
+  const [skipAI, setSkipAI] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
-  const [error,           setError]           = useState(null)
-  const [showHistory,     setShowHistory]     = useState(false)
-  const [showParsed,      setShowParsed]      = useState(false)
+  const [error, setError] = useState(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showParsed, setShowParsed] = useState(false)
   const [validationChecks, setValidationChecks] = useState([])
-  const [showValidation,  setShowValidation]  = useState(false)
-  const fileRef            = useRef()
+  const [showValidation, setShowValidation] = useState(false)
+  const fileRef = useRef()
   // Track which source IDs we've already attempted auto-parse for (prevents
   // repeated triggers across re-renders while parsing is in progress)
   const autoParseAttempted = useRef(new Set())
 
-  const activeSource   = sources.find(s => s.is_active) ?? sources[0] ?? null
+  const activeSource = sources.find(s => s.is_active) ?? sources[0] ?? null
   const historyEntries = sources.filter(s => s.id !== activeSource?.id)
 
   useEffect(() => {
@@ -214,43 +215,59 @@ export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
       const safeName = pendingFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const path = `${candidateId}/${crypto.randomUUID()}_${safeName}`
 
-      const { error: storageErr } = await supabase.storage
+      // Prepare UI for concurrent operations
+      if (pendingFile.type === 'application/pdf' && !skipAI) {
+        setParsing(true)
+      }
+
+      // 1. Upload task
+      const uploadPromise = supabase.storage
         .from('cvs')
         .upload(path, pendingFile, { contentType: pendingFile.type, upsert: false })
 
-      if (storageErr) {
-        if (storageErr.message?.toLowerCase().includes('bucket')) {
-          throw new Error("Storage bucket 'cvs' not found. Ask your admin to create it in Supabase Dashboard → Storage.")
-        }
-        throw new Error(storageErr.message)
+      // 2. AI Parsing task
+      let parsePromise = Promise.resolve(null)
+      if (pendingFile.type === 'application/pdf' && !skipAI) {
+        parsePromise = fileToBase64(pendingFile)
+          .then(base64 => parseCVWithClaude(base64, pendingFile.type))
       }
 
-      // AI parse (PDF only, non-fatal if it fails)
-      let parsedData = null
-      let parsedAt   = null
-      if (pendingFile.type === 'application/pdf') {
-        setParsing(true)
-        try {
-          const base64 = await fileToBase64(pendingFile)
-          parsedData = await parseCVWithClaude(base64, pendingFile.type)
-          parsedAt   = new Date().toISOString()
-        } catch (parseErr) {
-          console.warn('AI parse skipped:', parseErr.message)
+      // Execute both simultaneously
+      const [storageRes, parseRes] = await Promise.allSettled([uploadPromise, parsePromise])
+
+      // Handle storage errors (fatal, since we can't save the DB record without a file path)
+      if (storageRes.status === 'rejected') {
+        throw new Error(storageRes.reason.message || 'Upload failed critically')
+      }
+      if (storageRes.value.error) {
+        const msg = storageRes.value.error.message
+        if (msg?.toLowerCase().includes('bucket')) {
+          throw new Error("Storage bucket 'cvs' not found. Ask your admin to create it in Supabase.")
         }
-        setParsing(false)
+        throw new Error(msg)
+      }
+
+      // Handle parsing results (non-fatal if it fails)
+      let parsedData = null
+      let parsedAt = null
+      if (parseRes.status === 'fulfilled' && parseRes.value) {
+        parsedData = parseRes.value
+        parsedAt = new Date().toISOString()
+      } else if (parseRes.status === 'rejected') {
+        console.warn('AI parse skipped or failed:', parseRes.reason.message)
       }
 
       const { error: dbErr } = await supabase.from('cv_sources').insert({
         candidate_id: candidateId,
-        source_type:  'upload',
-        file_path:    path,
-        file_name:    pendingFile.name,
-        file_size:    pendingFile.size,
-        file_type:    pendingFile.type,
-        uploaded_by:  user?.id,
-        is_active:    true,
-        parsed_data:  parsedData,
-        parsed_at:    parsedAt,
+        source_type: 'upload',
+        file_path: path,
+        file_name: pendingFile.name,
+        file_size: pendingFile.size,
+        file_type: pendingFile.type,
+        uploaded_by: user?.id,
+        is_active: true,
+        parsed_data: parsedData,
+        parsed_at: parsedAt,
       })
       if (dbErr) throw new Error(dbErr.message)
 
@@ -283,10 +300,10 @@ export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
     setError(null)
     const { error: dbErr } = await supabase.from('cv_sources').insert({
       candidate_id: candidateId,
-      source_type:  'link',
-      file_url:     pendingLink.trim(),
-      uploaded_by:  user?.id,
-      is_active:    true,
+      source_type: 'link',
+      file_url: pendingLink.trim(),
+      uploaded_by: user?.id,
+      is_active: true,
     })
     if (dbErr) { setError(dbErr.message); setUploading(false); return }
 
@@ -409,7 +426,7 @@ export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
               width: 34, height: 34, borderRadius: 6, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: activeSource.source_type === 'upload' ? 'var(--teal-bg)' : 'var(--gold-bg)',
-              color:      activeSource.source_type === 'upload' ? 'var(--teal)'    : 'var(--gold)',
+              color: activeSource.source_type === 'upload' ? 'var(--teal)' : 'var(--gold)',
             }}>
               {activeSource.source_type === 'upload' ? <FileText size={16} /> : <Link2 size={16} />}
             </div>
@@ -702,9 +719,9 @@ export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
                     onClick={() => { setInputMode(id); setPendingFile(null); setPendingLink(''); setError(null) }}
                     style={{
                       flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
-                      background:    inputMode === id ? 'white' : 'transparent',
-                      borderBottom:  inputMode === id ? '2px solid var(--teal)' : '2px solid transparent',
-                      color:         inputMode === id ? 'var(--teal)' : 'var(--stone)',
+                      background: inputMode === id ? 'white' : 'transparent',
+                      borderBottom: inputMode === id ? '2px solid var(--teal)' : '2px solid transparent',
+                      color: inputMode === id ? 'var(--teal)' : 'var(--stone)',
                       fontSize: 11.5, fontWeight: 500,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                     }}
@@ -765,6 +782,18 @@ export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
                       </div>
                     )}
 
+                    <div style={{ padding: '12px 0 0', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--stone)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={skipAI}
+                          onChange={e => setSkipAI(e.target.checked)}
+                          style={{ margin: 0, accentColor: 'var(--teal)' }}
+                        />
+                        Upload without AI extraction
+                      </label>
+                    </div>
+
                     <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                       <button
                         onClick={handleUploadAndParse}
@@ -773,10 +802,10 @@ export default function CVSourcePanel({ candidateId, canEdit, onUpdated }) {
                         style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
                       >
                         {(uploading || parsing) && <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />}
-                        {parsing ? 'Parsing with AI…' : uploading ? 'Uploading…' : 'Save & Parse with AI'}
+                        {parsing ? 'Parsing with AI…' : uploading ? 'Uploading…' : skipAI ? 'Save CV' : 'Save & Parse with AI'}
                       </button>
                       <button
-                        onClick={() => { setInputMode(null); setPendingFile(null); setError(null) }}
+                        onClick={() => { setInputMode(null); setPendingFile(null); setError(null); setSkipAI(false) }}
                         className="btn btn-ghost btn-sm"
                         style={{ fontSize: 11 }}
                       >

@@ -10,7 +10,7 @@ export function RBACProvider({ children }) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (!user) {
+        if (!user?.id) {
             setPermissions([])
             setLoading(false)
             return
@@ -33,7 +33,7 @@ export function RBACProvider({ children }) {
         }
 
         fetchPermissions()
-    }, [user])
+    }, [user?.id])
 
     // Helper check method enforcing Via Negativa (Default Deny)
     const hasPermission = (module, action) => {

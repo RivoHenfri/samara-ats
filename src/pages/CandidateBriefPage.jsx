@@ -1,15 +1,24 @@
 /**
  * CandidateBriefPage.jsx
  *
- * Full-page view of the Candidate Brief with PDF export.
+ * Full-page shell for the Candidate Brief with PDF export.
  * Route: /candidates/:appId/brief (protected, requires auth)
+ *
+ * The CandidateBrief component renders its own background + padding,
+ * so this page is a minimal transparent shell with a sticky top bar.
  */
 
 import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Loader2 } from 'lucide-react'
+import { ArrowLeft, FileDown, Loader2, FileText } from 'lucide-react'
 import CandidateBrief from '../components/CandidateBrief'
-import { exportBriefAsPDF } from '../lib/exportCandidateBrief'
+import { useReactToPrint } from 'react-to-print'
+
+const TEAL = '#2A7B6F'
+const BORDER = '#E5E9EB'
+const MUTED = '#6B7280'
+const MONO = "'DM Mono', 'DM Sans', monospace"
+const SANS = "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif"
 
 export default function CandidateBriefPage() {
   const { appId } = useParams()
@@ -17,86 +26,74 @@ export default function CandidateBriefPage() {
   const briefRef = useRef(null)
   const [exporting, setExporting] = useState(false)
 
-  // We'll capture candidate and role names from the brief component
-  // via a callback or by reading the DOM. For simplicity, use DOM.
-  const handleExport = async () => {
-    if (!briefRef.current) return
-    setExporting(true)
+  const handlePrint = useReactToPrint({
+    contentRef: briefRef,
+    documentTitle: 'Candidate_Brief',
+    onBeforePrint: () => setExporting(true),
+    onAfterPrint: () => setExporting(false),
+  })
 
-    try {
-      // Extract names from the brief DOM
-      const h1 = briefRef.current.querySelector('h1')
-      const candidateName = h1?.textContent || 'Candidate'
-      const roleP = briefRef.current.querySelector('h1 + p')
-      const roleName = roleP?.textContent?.split('·')?.[0]?.trim() || 'Role'
-
-      await exportBriefAsPDF(briefRef.current, candidateName, roleName)
-    } catch (err) {
-      console.error('[CandidateBriefPage] PDF export failed:', err)
-      alert('PDF export failed. Please try again.')
-    }
-
-    setExporting(false)
+  const handleExport = () => {
+    handlePrint()
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F3F0' }}>
+    <div style={{ flex: 1, overflowY: 'auto', background: '#F7F9F9', fontFamily: SANS }}>
 
-      {/* Top bar */}
+      {/* ── Sticky top bar ── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
-        background: 'white', borderBottom: '1px solid #EBE7E1',
-        padding: '10px 24px',
+        background: 'white', borderBottom: `1px solid ${BORDER}`,
+        height: 52, padding: '0 24px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
         <button
           onClick={() => navigate(-1)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', gap: 7,
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, color: '#4A7C74', fontWeight: 500,
-            fontFamily: 'inherit',
+            fontSize: 13, color: MUTED, fontWeight: 500, fontFamily: SANS,
+            padding: '0 4px', transition: 'color 0.15s',
           }}
+          onMouseEnter={e => e.currentTarget.style.color = '#1A1A1A'}
+          onMouseLeave={e => e.currentTarget.style.color = MUTED}
         >
           <ArrowLeft size={15} /> Back
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12.5, color: '#9A8F80', fontWeight: 500 }}>
-            Candidate Brief
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={13} style={{ color: MUTED }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: MUTED, fontFamily: MONO, letterSpacing: '0.04em' }}>
+              Candidate Brief
+            </span>
+          </div>
+          <div style={{ width: 1, height: 18, background: BORDER }} />
           <button
             onClick={handleExport}
             disabled={exporting}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: '#4A7C74', color: 'white',
-              border: 'none', borderRadius: 6,
+              display: 'flex', alignItems: 'center', gap: 7,
+              background: TEAL, color: 'white',
+              border: 'none', borderRadius: 8,
               padding: '7px 16px', fontSize: 12.5, fontWeight: 600,
               cursor: exporting ? 'not-allowed' : 'pointer',
-              opacity: exporting ? 0.7 : 1,
-              fontFamily: 'inherit',
+              fontFamily: SANS, opacity: exporting ? 0.75 : 1,
+              transition: 'background 0.15s',
             }}
+            onMouseEnter={e => { if (!exporting) e.currentTarget.style.background = '#216158' }}
+            onMouseLeave={e => { if (!exporting) e.currentTarget.style.background = TEAL }}
           >
             {exporting
-              ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />Exporting…</>
-              : <><Download size={13} />Export PDF</>
-            }
+              ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Exporting…</>
+              : <><FileDown size={13} /> Export PDF</>}
           </button>
         </div>
       </div>
 
-      {/* Brief content */}
-      <div style={{ padding: '24px 16px 80px' }}>
-        <div style={{
-          background: 'white', borderRadius: 10,
-          border: '1px solid #EBE7E1',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          overflow: 'hidden',
-        }}>
-          <CandidateBrief ref={briefRef} applicationId={appId} />
-        </div>
-      </div>
+      {/* ── Brief content — component handles its own bg + padding ── */}
+      <CandidateBrief ref={briefRef} applicationId={appId} />
     </div>
   )
 }

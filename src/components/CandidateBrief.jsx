@@ -1,23 +1,19 @@
 /**
  * CandidateBrief.jsx
  *
- * Unified candidate view that aggregates all data into a single,
- * print-friendly layout for interviewers. Combines:
- * - Candidate profile
- * - CV summary (from parsed_data)
- * - Prescreening form responses
- * - MBTI result
- * - AI compatibility score + risk flags
- * - Interview focus areas
- * - Screening questions
+ * Unified candidate view matching the DM Sans design system (HTML template).
+ * Sections: Hero · Profile · CV Summary · Employment · Education · Certificates · Flags
  */
 
-import { useState, useEffect, forwardRef } from 'react'
+import { useState, useEffect, forwardRef, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { Loader2 } from 'lucide-react'
+import './CandidateBrief.css'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function displayIDR(num) {
-  if (!num) return '—'
+  if (!num) return null
   return 'Rp ' + parseInt(num).toLocaleString('id-ID')
 }
 
@@ -30,6 +26,83 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
+function formatMonthYear(yyyyMM) {
+  if (!yyyyMM || yyyyMM === 'Present') return 'Present'
+  try {
+    const [y, m] = yyyyMM.split('-')
+    const d = new Date(parseInt(y), parseInt(m) - 1)
+    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+  } catch { return yyyyMM }
+}
+
+// Classify a flag string as 'danger' or 'warning'
+function flagSeverity(flagText) {
+  const lower = (flagText || '').toLowerCase()
+  if (lower.includes('instabilit') || lower.includes('unclear if still') || lower.includes('terminated') || lower.includes('fired'))
+    return 'danger'
+  return 'warning'
+}
+
+// Map AI risk_flag severity to our flag type
+function riskSeverity(sev) {
+  return sev === 'high' ? 'danger' : 'warning'
+}
+
+// ── Avatar with photo upload ──────────────────────────────────────────────────
+function Avatar() {
+  const [photo, setPhoto] = useState(null)
+  const inputRef = useRef()
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setPhoto(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="avatar" onClick={() => inputRef.current?.click()} title="Click to upload photo">
+      {photo ? (
+        <img src={photo} alt="Candidate" />
+      ) : (
+        <>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+          </svg>
+          <span>Add Photo</span>
+        </>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+    </div>
+  )
+}
+
+// ── Stage badge style ─────────────────────────────────────────────────────────
+const STAGE_EMOJI = {
+  New: '🆕',
+  Screening: '⏳',
+  'Interview Pending': '📅',
+  'Interview Scheduled': '📅',
+  'Interview Completed': '✅',
+  Offer: '📄',
+  Hired: '🎉',
+  Rejected: '❌',
+}
+
+// Using inline overrides only for colors on the badge to keep the class structure
+const STAGE_STYLE = {
+  Screening: { bg: 'var(--amber-light)', color: '#92650A', border: '#F0CC85' },
+  New: { bg: '#F3F4F6', color: 'var(--text-muted)', border: 'var(--border)' },
+  'Interview Pending': { bg: 'var(--amber-light)', color: '#92650A', border: '#F0CC85' },
+  'Interview Scheduled': { bg: 'var(--teal-light)', color: '#1A5C53', border: 'var(--teal-mid)' },
+  'Interview Completed': { bg: 'var(--teal-light)', color: '#1A5C53', border: 'var(--teal-mid)' },
+  Offer: { bg: 'var(--amber-light)', color: '#92650A', border: '#F0CC85' },
+  Hired: { bg: 'var(--teal-light)', color: '#1A5C53', border: 'var(--teal-mid)' },
+  Rejected: { bg: '#FDECEA', color: '#9B1C1C', border: '#FECACA' },
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 const CandidateBrief = forwardRef(function CandidateBrief({ applicationId }, ref) {
   const [data, setData] = useState(null)
   const [cv, setCV] = useState(null)
@@ -38,8 +111,6 @@ const CandidateBrief = forwardRef(function CandidateBrief({ applicationId }, ref
   useEffect(() => {
     async function load() {
       setLoading(true)
-
-      // Fetch application with all joins
       const { data: app } = await supabase
         .from('applications')
         .select(`
@@ -55,417 +126,384 @@ const CandidateBrief = forwardRef(function CandidateBrief({ applicationId }, ref
 
       if (app) {
         setData(app)
-
-        // Fetch parsed CV
         const { data: cvData } = await supabase
           .from('cv_sources')
           .select('parsed_data')
           .eq('candidate_id', app.candidates.id)
           .eq('is_active', true)
           .maybeSingle()
-
         setCV(cvData?.parsed_data || null)
       }
-
       setLoading(false)
     }
     load()
   }, [applicationId])
 
-  if (loading) {
-    return (
-      <div style={{ padding: 60, textAlign: 'center', color: '#9A8F80' }}>
-        <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: 12, fontSize: 13 }}>Loading candidate brief…</p>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div style={{ padding: 80, textAlign: 'center', color: 'var(--text-muted)', fontFamily: "'DM Sans', sans-serif" }}>
+      <Loader2 size={26} style={{ animation: 'spin 1s linear infinite' }} />
+      <p style={{ marginTop: 12, fontSize: 13 }}>Loading candidate brief…</p>
+    </div>
+  )
 
-  if (!data) {
-    return (
-      <div style={{ padding: 60, textAlign: 'center', color: '#C0614A' }}>
-        <p style={{ fontSize: 14, fontWeight: 500 }}>Candidate data not found.</p>
-      </div>
-    )
-  }
+  if (!data) return (
+    <div style={{ padding: 80, textAlign: 'center', color: 'var(--red)', fontFamily: "'DM Sans', sans-serif" }}>
+      <p style={{ fontSize: 14, fontWeight: 500 }}>Candidate data not found.</p>
+    </div>
+  )
 
   const candidate = data.candidates
   const role = data.roles
-  const score = data.application_scores?.[0] || (Array.isArray(data.application_scores) ? null : data.application_scores)
-  const latestScore = Array.isArray(data.application_scores) ? data.application_scores[data.application_scores.length - 1] : data.application_scores
-  const questions = Array.isArray(data.screening_questions) ? data.screening_questions[data.screening_questions.length - 1] : data.screening_questions
-  const prescreen = Array.isArray(data.prescreening_responses) ? data.prescreening_responses[0] : data.prescreening_responses
+  const latestScore = Array.isArray(data.application_scores)
+    ? data.application_scores[data.application_scores.length - 1]
+    : data.application_scores
+  const questions = Array.isArray(data.screening_questions)
+    ? data.screening_questions[data.screening_questions.length - 1]
+    : data.screening_questions
+  const prescreen = Array.isArray(data.prescreening_responses)
+    ? data.prescreening_responses[0]
+    : data.prescreening_responses
   const prescreenResponses = prescreen?.responses || {}
   const prescreenTemplate = prescreen?.template_snapshot || {}
 
+  const stageStyle = STAGE_STYLE[data.stage] || STAGE_STYLE.New
+  const emoji = STAGE_EMOJI[data.stage] || ''
+
+  // Merge CV flags + risk flags
+  const allFlags = [
+    ...(cv?.flags || []).map(f => ({ text: f, type: flagSeverity(f) })),
+    ...(latestScore?.risk_flags || []).map(rf => ({ text: rf.detail ? `${rf.flag} — ${rf.detail}` : rf.flag, type: riskSeverity(rf.severity) })),
+  ]
+
+  const profileItems = [
+    { label: 'Origin', value: candidate.origin || null, colClass: '' },
+    { label: 'WhatsApp', value: candidate.whatsapp || null, colClass: '' },
+    { label: 'Email', value: candidate.email || null, isEmail: true, colClass: 'profile-item-col-3' },
+    { label: 'Current Salary', value: displayIDR(candidate.current_salary), colClass: 'profile-item-last-row' },
+    { label: 'Expected Salary', value: displayIDR(candidate.expected_salary), colClass: 'profile-item-last-row' },
+    { label: 'Availability', value: candidate.availability_to_start || null, colClass: 'profile-item-col-3 profile-item-last-row' },
+  ]
+
+  const numRoles = cv?.employment_history?.length ?? null
+
   return (
-    <div ref={ref} style={pageStyle}>
+    <div ref={ref} className="candidate-brief-wrapper">
+      <div className="page">
 
-      {/* ═══ 1. HEADER ═══ */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#2C2A27', margin: '0 0 4px', letterSpacing: '-0.01em' }}>
-              {candidate.full_name}
-            </h1>
-            <p style={{ fontSize: 14, color: '#6B6560', margin: 0 }}>
-              {role.title} · {role.department}
-            </p>
+        {/* ── HERO ── */}
+        <div className="hero">
+          <div className="hero-left">
+            <Avatar />
+            <div className="hero-text">
+              <span className="division-tag">{role.department}</span>
+              <h1>{candidate.full_name}</h1>
+              <span className="role">
+                {role.title}
+                {cv?.current_role && cv.current_role !== role.title ? ` · ${cv.current_role}` : ''}
+              </span>
+            </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <span style={stageBadge(data.stage)}>{data.stage}</span>
-            <p style={{ fontSize: 11, color: '#9A8F80', marginTop: 4 }}>
-              Applied {formatDate(data.created_at)}
-            </p>
+          <div className="hero-right">
+            <span className="status-badge" style={{ background: stageStyle.bg, color: stageStyle.color, borderColor: stageStyle.border }}>
+              {emoji} {data.stage}
+            </span>
+            <span className="apply-date">Applied {formatDate(data.created_at)}</span>
           </div>
         </div>
-      </div>
 
-      {/* ═══ 2. PROFILE SUMMARY ═══ */}
-      <div style={sectionStyle}>
-        <SectionTitle>Profile</SectionTitle>
-        <div style={gridStyle}>
-          <InfoCell label="Origin" value={candidate.origin || '—'} />
-          <InfoCell label="WhatsApp" value={candidate.whatsapp || '—'} />
-          <InfoCell label="Email" value={candidate.email || '—'} />
-          <InfoCell label="Current Salary" value={displayIDR(candidate.current_salary)} />
-          <InfoCell label="Expected Salary" value={displayIDR(candidate.expected_salary)} />
-          <InfoCell label="Availability" value={candidate.availability_to_start || '—'} />
-        </div>
-      </div>
-
-      {/* ═══ 3. MBTI ═══ */}
-      {prescreenResponses.mbti_type && (
-        <div style={sectionStyle}>
-          <SectionTitle>MBTI Type</SectionTitle>
-          <span style={{
-            fontSize: 20, fontWeight: 700, letterSpacing: '0.12em',
-            color: '#4A7C74', background: 'rgba(74,124,116,0.08)',
-            padding: '4px 14px', borderRadius: 6,
-          }}>
-            {prescreenResponses.mbti_type.toUpperCase()}
-          </span>
-        </div>
-      )}
-
-      {/* ═══ 4. CV SUMMARY ═══ */}
-      {cv && (
-        <div style={sectionStyle}>
-          <SectionTitle>CV Summary</SectionTitle>
-          <div style={gridStyle}>
-            {cv.current_role && <InfoCell label="Current Role" value={cv.current_role} />}
-            {cv.experience_years && <InfoCell label="Experience" value={`${cv.experience_years} years`} />}
-            {cv.average_tenure_months && <InfoCell label="Avg. Tenure" value={`${cv.average_tenure_months} months`} />}
+        {/* ── PROFILE ── */}
+        <div className="card">
+          <div className="section-label">Profile</div>
+          <div className="profile-grid">
+            {profileItems.map((item, i) => (
+              <div key={i} className={`profile-item ${item.colClass}`}>
+                <div className="profile-label">{item.label}</div>
+                {item.isEmail && item.value ? (
+                  <div className="profile-value">
+                    <a href={`mailto:${item.value}`}>{item.value}</a>
+                  </div>
+                ) : item.value ? (
+                  <div className="profile-value">{item.value}</div>
+                ) : (
+                  <div className="profile-value muted">Not stated</div>
+                )}
+              </div>
+            ))}
           </div>
+        </div>
 
-          {/* Skills */}
-          {cv.skills?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <p style={subLabelStyle}>Skills</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {cv.skills.map((s, i) => (
-                  <span key={i} style={skillTag}>{s}</span>
-                ))}
+        {/* ── CV SUMMARY ── */}
+        {cv && (
+          <div className="card">
+            <div className="section-label">CV Summary</div>
+            <div className="metrics-row">
+              <div className="metric-box">
+                <div className="metric-value">{cv.experience_years != null ? `${cv.experience_years} yrs` : '—'}</div>
+                <div className="metric-label">Total Experience</div>
+              </div>
+              <div className="metric-box">
+                <div className="metric-value">{cv.average_tenure_months != null ? `${Math.round(cv.average_tenure_months)} mo` : '—'}</div>
+                <div className="metric-label">Avg. Tenure</div>
+              </div>
+              <div className="metric-box">
+                <div className="metric-value">{numRoles != null ? numRoles : '—'}</div>
+                <div className="metric-label">Previous Roles</div>
               </div>
             </div>
-          )}
 
-          {/* Employment history */}
-          {cv.employment_history?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <p style={subLabelStyle}>Employment History</p>
-              {cv.employment_history.map((job, i) => (
-                <div key={i} style={{ marginBottom: 6, fontSize: 12.5, color: '#2C2A27', lineHeight: 1.5 }}>
-                  <strong>{job.role || job.title}</strong> at {job.company}
-                  <span style={{ color: '#9A8F80', marginLeft: 6 }}>
-                    {job.start} — {job.end || 'Present'}
-                    {job.duration_months ? ` (${job.duration_months}mo)` : ''}
-                  </span>
+            {cv.skills?.length > 0 && (
+              <>
+                <div className="section-label" style={{ marginTop: 4 }}>Skills</div>
+                <div className="skills-wrap">
+                  {cv.skills.map((s, i) => (
+                    <span key={i} className="skill-tag">{s}</span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              </>
+            )}
+          </div>
+        )}
 
-          {/* Education */}
-          {cv.education?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <p style={subLabelStyle}>Education</p>
-              {cv.education.map((edu, i) => (
-                <div key={i} style={{ fontSize: 12.5, color: '#2C2A27', marginBottom: 4 }}>
-                  {edu.degree} in {edu.field} — {edu.institution} {edu.year ? `(${edu.year})` : ''}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* ── EMPLOYMENT HISTORY ── */}
+        {cv?.employment_history?.length > 0 && (
+          <div className="card">
+            <div className="section-label">Employment History</div>
+            <div className="timeline">
+              {cv.employment_history.map((job, i) => {
+                const isCurrent = !job.end || job.end === 'Present'
+                const responsibilities = job.responsibilities || job.duties || []
+                return (
+                  <div key={i} className="timeline-item">
+                    <div className={`timeline-dot ${(!job.end || job.end === 'Present') && i === 0 ? 'current' : ''}`}></div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">{job.role || job.title}</div>
+                      <div className="timeline-company">{job.company}</div>
+                      {job.location ? (
+                        <div className="timeline-location">📍 {job.location}</div>
+                      ) : (
+                        <div className="timeline-location location-not-stated">📍 Location not stated in CV</div>
+                      )}
 
-          {/* Flags */}
-          {cv.flags?.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <p style={subLabelStyle}>CV Flags</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {cv.flags.map((flag, i) => (
-                  <span key={i} style={{
-                    fontSize: 11, color: '#C0614A', background: 'rgba(192,97,74,0.08)',
-                    padding: '2px 8px', borderRadius: 4,
-                  }}>
-                    {flag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                      <div className="timeline-meta">
+                        <span>{formatMonthYear(job.start)} – {formatMonthYear(job.end)}</span>
+                        {job.duration_months > 0 && (
+                          <span className="tenure-pill">
+                            {job.duration_months >= 60
+                              ? `${Math.floor(job.duration_months / 12)} yr${Math.floor(job.duration_months / 12) > 1 ? 's' : ''} ${job.duration_months % 12 > 0 ? `${job.duration_months % 12} mo` : ''}`
+                              : `${job.duration_months} mo`}
+                          </span>
+                        )}
+                      </div>
 
-      {/* ═══ 5. PRESCREENING ANSWERS ═══ */}
-      {prescreen?.status === 'completed' && (
-        <div style={sectionStyle}>
-          <SectionTitle>Prescreening Responses</SectionTitle>
-
-          {/* Fixed fields */}
-          {(prescreenTemplate.fixed_fields || [])
-            .filter(f => f.enabled !== false)
-            .map(field => {
-              const val = prescreenResponses[field.field_key]
-              const detail = prescreenResponses[`${field.field_key}_detail`]
-              if (field.field_key === 'mbti_type') return null // shown separately above
-
-              let displayVal = val || '—'
-              if (field.type === 'currency' && val) displayVal = displayIDR(val)
-              else if (field.type === 'yes_no_detail') {
-                displayVal = val === 'yes' ? `Yes — ${detail || '(no details)'}` : val === 'no' ? 'No' : '—'
-              }
-
-              return (
-                <div key={field.field_key} style={{ marginBottom: 8 }}>
-                  <p style={subLabelStyle}>{field.label}</p>
-                  <p style={{ fontSize: 13, color: '#2C2A27', margin: 0, lineHeight: 1.5 }}>{displayVal}</p>
-                </div>
-              )
-            })}
-
-          {/* Custom questions */}
-          {(prescreenTemplate.custom_questions || []).map((q, i) => (
-            <div key={i} style={{ marginBottom: 8 }}>
-              <p style={subLabelStyle}>{q.question}</p>
-              <p style={{ fontSize: 13, color: '#2C2A27', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                {prescreenResponses[`custom_q_${i}`] || '—'}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ═══ 6. AI COMPATIBILITY SCORE ═══ */}
-      {latestScore && (
-        <div style={sectionStyle}>
-          <SectionTitle>AI Compatibility Score</SectionTitle>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 20, fontWeight: 700, color: 'white',
-              background: latestScore.overall_score >= 70 ? '#4A7C74'
-                : latestScore.overall_score >= 40 ? '#B8860B' : '#C0614A',
-            }}>
-              {latestScore.overall_score}
-            </div>
-            <div style={{ flex: 1 }}>
-              <ScoreBar label="Must-Have" value={latestScore.must_have_score} />
-              <ScoreBar label="Nice-to-Have" value={latestScore.nice_to_have_score} />
-              <ScoreBar label="Salary Fit" value={latestScore.salary_alignment_score} />
+                      {responsibilities.length > 0 && (
+                        <div className="responsibilities" style={{ marginTop: 12 }}>
+                          <ul className="timeline-responsibilities">
+                            {responsibilities.map((r, ri) => (
+                              <li key={ri}>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
+        )}
 
-          {latestScore.executive_summary && (
-            <div style={{ marginBottom: 12 }}>
-              <p style={subLabelStyle}>Executive Summary</p>
-              <p style={{ fontSize: 13, color: '#2C2A27', margin: 0, lineHeight: 1.6 }}>
-                {latestScore.executive_summary}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══ 7. RISK FLAGS ═══ */}
-      {latestScore?.risk_flags?.length > 0 && (
-        <div style={sectionStyle}>
-          <SectionTitle>Risk Flags</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {latestScore.risk_flags.map((rf, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8,
-                padding: '6px 10px', borderRadius: 6,
-                background: rf.severity === 'high' ? 'rgba(192,97,74,0.06)'
-                  : rf.severity === 'medium' ? 'rgba(184,134,11,0.06)'
-                  : 'rgba(154,143,128,0.06)',
-                border: `1px solid ${rf.severity === 'high' ? 'rgba(192,97,74,0.15)'
-                  : rf.severity === 'medium' ? 'rgba(184,134,11,0.15)'
-                  : 'rgba(154,143,128,0.15)'}`,
-              }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                  color: rf.severity === 'high' ? '#C0614A' : rf.severity === 'medium' ? '#B8860B' : '#9A8F80',
-                  minWidth: 48,
-                }}>
-                  {rf.severity}
-                </span>
+        {/* ── EDUCATION ── */}
+        {cv?.education?.length > 0 && (
+          <div className="card">
+            <div className="section-label">Education</div>
+            {cv.education.map((edu, i) => (
+              <div key={i} className="edu-row">
                 <div>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#2C2A27' }}>{rf.flag}</span>
-                  {rf.detail && (
-                    <p style={{ fontSize: 12, color: '#6B6560', margin: '2px 0 0', lineHeight: 1.4 }}>{rf.detail}</p>
+                  <div className="edu-degree">
+                    {edu.degree}{edu.field ? ` in ${edu.field}` : ''}
+                  </div>
+                  <div className="edu-school">{edu.institution}</div>
+                  {edu.gpa && (
+                    <span className="edu-gpa">GPA {edu.gpa}{edu.honor ? ` – ${edu.honor}` : ''}</span>
                   )}
                 </div>
+                {edu.year && <div className="edu-year">{edu.year}</div>}
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ═══ 8. INTERVIEW FOCUS ═══ */}
-      {latestScore?.interview_focus?.length > 0 && (
-        <div style={sectionStyle}>
-          <SectionTitle>Interview Focus Areas</SectionTitle>
-          <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {latestScore.interview_focus.map((area, i) => (
-              <li key={i} style={{ fontSize: 13, color: '#2C2A27', lineHeight: 1.5 }}>{area}</li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {/* ═══ 9. SCREENING QUESTIONS ═══ */}
-      {questions?.questions && (
-        <div style={sectionStyle}>
-          <SectionTitle>Screening Questions</SectionTitle>
-          {Object.entries(questions.questions).map(([category, qList]) => {
-            if (!Array.isArray(qList) || qList.length === 0) return null
-            return (
-              <div key={category} style={{ marginBottom: 14 }}>
-                <p style={{
-                  fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: '0.08em', color: '#4A7C74', margin: '0 0 6px',
-                }}>
-                  {category.replace(/_/g, ' ')}
-                </p>
-                {qList.map((q, i) => (
-                  <div key={i} style={{ marginBottom: 6, paddingLeft: 12 }}>
-                    <p style={{ fontSize: 12.5, color: '#2C2A27', margin: 0, lineHeight: 1.5 }}>
-                      {i + 1}. {q.question || q}
-                    </p>
-                    {q.rationale && (
-                      <p style={{ fontSize: 11, color: '#9A8F80', margin: '1px 0 0', fontStyle: 'italic' }}>
-                        {q.rationale}
-                      </p>
+        {/* ── CERTIFICATES ── */}
+        {cv?.certificates?.length > 0 && (
+          <div className="card">
+            <div className="section-label">Certificates</div>
+            <div className="timeline" style={{ gap: 0 }}>
+              {cv.certificates.map((cert, i) => (
+                <div key={i} className="cert-item">
+                  <div>
+                    <div className="cert-name">{cert.name || cert.title}</div>
+                    {(cert.issuer || cert.institution) && (
+                      <div className="cert-issuer">{cert.issuer || cert.institution}</div>
                     )}
+                  </div>
+                  {(cert.year || cert.date) && (
+                    <div className="cert-year">{cert.year || cert.date}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── PRESCREENING ── */}
+        {prescreen?.status === 'completed' && (() => {
+          const fields = (prescreenTemplate.fixed_fields || []).filter(f => f.enabled !== false && f.field_key !== 'mbti_type')
+          const customs = prescreenTemplate.custom_questions || []
+          if (!fields.length && !customs.length && !prescreenResponses.mbti_type) return null
+          return (
+            <div className="card">
+              <div className="section-label">Prescreening Responses</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {prescreenResponses.mbti_type && (
+                  <div>
+                    <div className="pre-label">MBTI Type</div>
+                    <span className="skill-tag" style={{ fontSize: 16, fontFamily: 'var(--monoFont)', padding: '3px 12px', borderRadius: 6 }}>
+                      {prescreenResponses.mbti_type.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {fields.map(field => {
+                  const val = prescreenResponses[field.field_key]
+                  const detail = prescreenResponses[`${field.field_key}_detail`]
+                  let displayVal = val || null
+                  if (field.type === 'currency' && val) displayVal = displayIDR(val)
+                  else if (field.type === 'yes_no_detail') {
+                    displayVal = val === 'yes' ? `Yes — ${detail || '(no details)'}` : val === 'no' ? 'No' : null
+                  }
+                  return (
+                    <div key={field.field_key}>
+                      <div className="pre-label">{field.label}</div>
+                      <div className={`pre-value ${!displayVal ? 'muted' : ''}`}>{displayVal || 'Not stated'}</div>
+                    </div>
+                  )
+                })}
+                {customs.map((q, i) => {
+                  const val = prescreenResponses[`custom_q_${i}`]
+                  return (
+                    <div key={i}>
+                      <div className="pre-label">{q.question}</div>
+                      <div className={`pre-value ${!val ? 'muted' : ''}`} style={{ whiteSpace: 'pre-wrap' }}>{val || 'Not stated'}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── AI COMPATIBILITY SCORE ── */}
+        {latestScore && (
+          <div className="card">
+            <div className="section-label">AI Compatibility Score</div>
+
+            <div className="score-circle-container" style={{ marginBottom: latestScore.executive_summary ? 16 : 0 }}>
+              <div className={`score-circle ${latestScore.overall_score >= 70 ? 'good' : latestScore.overall_score >= 40 ? 'mid' : 'bad'}`}>
+                {latestScore.overall_score}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 200 }}>
+                {[
+                  { label: 'Must-Have', value: latestScore.must_have_score },
+                  { label: 'Nice-to-Have', value: latestScore.nice_to_have_score },
+                  { label: 'Salary Fit', value: latestScore.salary_alignment_score },
+                ].map(({ label, value }) => value != null && (
+                  <div key={label} className="score-bar-row">
+                    <span className="score-label">{label}</span>
+                    <div className="score-track">
+                      <div className={`score-fill ${value >= 70 ? 'good' : value >= 40 ? 'mid' : 'bad'}`} style={{ width: `${value}%` }} />
+                    </div>
+                    <span className="score-value-text">{value}</span>
                   </div>
                 ))}
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
 
-      {/* Footer */}
-      <div style={{
-        padding: '16px 24px', borderTop: '1px solid #EBE7E1',
-        fontSize: 10.5, color: '#9A8F80', textAlign: 'center',
-      }}>
-        Generated by Samara ATS · {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {latestScore.executive_summary && (
+              <div className="responsibilities">
+                <div className="resp-label">Executive Summary</div>
+                <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
+                  {latestScore.executive_summary}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── INTERVIEW FOCUS ── */}
+        {latestScore?.interview_focus?.length > 0 && (
+          <div className="card">
+            <div className="section-label">Interview Focus Areas</div>
+            <ul className="ol-list">
+              {latestScore.interview_focus.map((area, i) => (
+                <li key={i} className="ol-item">
+                  <span className="ol-num">{i + 1}</span>
+                  {area}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ── SCREENING QUESTIONS ── */}
+        {questions?.questions && (
+          <div className="card">
+            <div className="section-label">Screening Questions</div>
+            {Object.entries(questions.questions).map(([cat, qList]) => {
+              if (!Array.isArray(qList) || !qList.length) return null
+              return (
+                <div key={cat} className="q-list">
+                  <div className="q-cat-title">{cat.replace(/_/g, ' ')}</div>
+                  {qList.map((q, i) => (
+                    <div key={i} className="q-item">
+                      <p className="q-text">
+                        <span className="q-num">{i + 1}.</span>
+                        {q.question || q}
+                      </p>
+                      {q.rationale && (
+                        <p className="q-rationale">{q.rationale}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── CV FLAGS ── */}
+        {allFlags.length > 0 && (
+          <div className="card">
+            <div className="section-label">CV Flags</div>
+            <div className="flags-list">
+              {allFlags.map((flag, i) => (
+                <div key={i} className={`flag-item ${flag.type}`}>
+                  <span className="flag-icon">{flag.type === 'danger' ? '🔴' : '⚠️'}</span>
+                  <span className="flag-text">{flag.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── FOOTER ── */}
+        <div className="footer">
+          <span>Generated by Samara ATS</span>
+          <span>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </div>
+
       </div>
     </div>
   )
 })
 
 export default CandidateBrief
-
-// ── Helper Components ───────────────────────────────────────────────────────
-
-function SectionTitle({ children }) {
-  return (
-    <h3 style={{
-      fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-      letterSpacing: '0.14em', color: '#9A8F80', margin: '0 0 10px',
-      paddingBottom: 6, borderBottom: '1px solid #EBE7E1',
-    }}>
-      {children}
-    </h3>
-  )
-}
-
-function InfoCell({ label, value }) {
-  return (
-    <div>
-      <p style={{ fontSize: 10.5, color: '#9A8F80', margin: '0 0 2px', fontWeight: 500 }}>{label}</p>
-      <p style={{ fontSize: 13, color: '#2C2A27', margin: 0, fontWeight: 500 }}>{value}</p>
-    </div>
-  )
-}
-
-function ScoreBar({ label, value }) {
-  if (value == null) return null
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-      <span style={{ fontSize: 10.5, color: '#9A8F80', minWidth: 80 }}>{label}</span>
-      <div style={{ flex: 1, height: 6, background: '#EBE7E1', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{
-          width: `${value}%`, height: '100%', borderRadius: 3,
-          background: value >= 70 ? '#4A7C74' : value >= 40 ? '#B8860B' : '#C0614A',
-        }} />
-      </div>
-      <span style={{ fontSize: 11, color: '#2C2A27', fontWeight: 600, minWidth: 24, textAlign: 'right' }}>{value}</span>
-    </div>
-  )
-}
-
-function stageBadge(stage) {
-  const colors = {
-    New: { bg: 'rgba(154,143,128,0.1)', color: '#9A8F80' },
-    Screening: { bg: 'rgba(74,124,116,0.1)', color: '#4A7C74' },
-    'Interview Pending': { bg: 'rgba(184,134,11,0.08)', color: '#B8860B' },
-    'Interview Scheduled': { bg: 'rgba(74,124,116,0.1)', color: '#4A7C74' },
-    'Interview Completed': { bg: 'rgba(74,124,116,0.15)', color: '#4A7C74' },
-    Offer: { bg: 'rgba(184,134,11,0.12)', color: '#8A6010' },
-    Hired: { bg: 'rgba(74,124,116,0.15)', color: '#4A7C74' },
-    Rejected: { bg: 'rgba(192,97,74,0.1)', color: '#C0614A' },
-  }
-  const c = colors[stage] || colors.New
-  return {
-    fontSize: 11, fontWeight: 600,
-    padding: '3px 10px', borderRadius: 4,
-    color: c.color, background: c.bg,
-  }
-}
-
-// ── Styles ──────────────────────────────────────────────────────────────────
-
-const pageStyle = {
-  maxWidth: 800,
-  margin: '0 auto',
-  background: 'white',
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-}
-
-const sectionStyle = {
-  padding: '20px 24px',
-  borderBottom: '1px solid #EBE7E1',
-}
-
-const gridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-  gap: '10px 20px',
-}
-
-const subLabelStyle = {
-  fontSize: 10.5, fontWeight: 600, color: '#9A8F80',
-  textTransform: 'uppercase', letterSpacing: '0.06em',
-  margin: '0 0 3px',
-}
-
-const skillTag = {
-  fontSize: 11, color: '#4A7C74',
-  background: 'rgba(74,124,116,0.08)',
-  padding: '2px 8px', borderRadius: 3,
-}

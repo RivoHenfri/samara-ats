@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Search, MessageCircle, ExternalLink, X, RotateCcw, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
+import { Search, MessageCircle, ExternalLink, X, RotateCcw, ChevronLeft, ChevronRight, Zap, FileText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import CandidateDetail from './CandidateDetail'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import { ScoreBadge } from './CompatibilityScore'
@@ -78,10 +79,12 @@ function WhatsAppButton({ candidate, role, stage }) {
 // ── MAIN COMPONENT ────────────────────────────────────────────
 export default function CandidatesList() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const [applications, setApplications] = useState([])
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
   const [presets, setPresets] = useState(() => {
     const saved = localStorage.getItem('candidate_filter_presets')
@@ -104,6 +107,23 @@ export default function CandidatesList() {
   const highMatch = searchParams.get('highMatch') === '1'
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = 20
+
+  // Local state for debounced search input
+  const [searchInput, setSearchInput] = useState(search)
+
+  useEffect(() => {
+    setSearchInput(search)
+  }, [search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== search) {
+        updateFilters('q', searchInput)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
 
   useEffect(() => {
     // Fetch roles for the filter dropdown
@@ -203,6 +223,7 @@ export default function CandidatesList() {
       }
     }
     setLoading(false)
+    setInitialLoad(false)
   }, [search, roleFilters.join(','), deptFilters.join(','), stageFilters.join(','), originFilters.join(','), highMatch, page])
 
   useEffect(() => {
@@ -304,7 +325,7 @@ export default function CandidatesList() {
     return hrs > 48
   }
 
-  if (loading) return (
+  if (initialLoad) return (
     <div className="loading-state">
       <span className="spinner" />
       Loading candidates…
@@ -349,8 +370,8 @@ export default function CandidatesList() {
               <Search size={13} />
               <input
                 type="text"
-                value={search}
-                onChange={e => updateFilters('q', e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
                 placeholder="Search candidates…"
                 className="search-input"
               />
@@ -618,12 +639,27 @@ export default function CandidatesList() {
                     <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--stone)' }}>
                       {app.candidates?.whatsapp || '—'}
                     </td>
-                    <td onClick={e => e.stopPropagation()}>
+                    <td onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {app.candidates?.whatsapp ? (
                         <WhatsAppButton candidate={app.candidates} role={app.roles} stage={app.stage} />
                       ) : (
                         <span style={{ fontSize: 11, color: 'var(--stone-light)' }}>No number</span>
                       )}
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/candidates/${app.id}/brief`) }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'var(--stone)', background: 'none', border: 'none',
+                          cursor: 'pointer', padding: 4, borderRadius: 4,
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.color = 'var(--teal)'; e.currentTarget.style.background = 'var(--teal-bg)' }}
+                        onMouseOut={e => { e.currentTarget.style.color = 'var(--stone)'; e.currentTarget.style.background = 'transparent' }}
+                        title="View Brief"
+                      >
+                        <FileText size={14} />
+                      </button>
                     </td>
                   </tr>
                 )
