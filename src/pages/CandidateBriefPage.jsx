@@ -10,9 +10,10 @@
 
 import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileDown, Loader2, FileText } from 'lucide-react'
+import { ArrowLeft, FileDown, Loader2, FileText, FileCode } from 'lucide-react'
 import CandidateBrief from '../components/CandidateBrief'
 import { useReactToPrint } from 'react-to-print'
+import briefStyles from '../components/CandidateBrief.css?raw'
 
 const TEAL = '#2A7B6F'
 const BORDER = '#E5E9EB'
@@ -25,6 +26,7 @@ export default function CandidateBriefPage() {
   const navigate = useNavigate()
   const briefRef = useRef(null)
   const [exporting, setExporting] = useState(false)
+  const [exportingWord, setExportingWord] = useState(false)
 
   const handlePrint = useReactToPrint({
     contentRef: briefRef,
@@ -42,13 +44,59 @@ export default function CandidateBriefPage() {
     handlePrint()
   }
 
+  const handleExportWord = () => {
+    if (!briefRef.current) return
+    setExportingWord(true)
+
+    setTimeout(() => {
+      try {
+        const content = briefRef.current.innerHTML
+
+        const html = `
+          <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+          <head>
+            <meta charset='utf-8'>
+            <title>Candidate_Brief</title>
+            <style>
+              ${briefStyles}
+              body { font-family: 'DM Sans', sans-serif; background: #FFF !important; }
+              .candidate-brief-wrapper { padding: 0 !important; background: #FFF !important; }
+              .page { max-width: 100% !important; padding: 0 !important; gap: 14px; }
+              .avatar span, .avatar svg { display: none !important; }
+            </style>
+          </head>
+          <body>
+            <div class="candidate-brief-wrapper">
+              ${content}
+            </div>
+          </body>
+          </html>
+        `
+
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        document.body.appendChild(link)
+        link.href = url
+        link.download = 'Candidate_Brief_' + appId + '.doc'
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } catch (err) {
+        console.error('Failed to export to Word:', err)
+      } finally {
+        setExportingWord(false)
+      }
+    }, 50)
+  }
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', background: '#F7F9F9', fontFamily: SANS }}>
 
       {/* ── Sticky top bar ── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
-        background: 'white', borderBottom: `1px solid ${BORDER}`,
+        background: 'white', borderBottom: `1px solid ${BORDER} `,
         height: 52, padding: '0 24px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
@@ -74,21 +122,42 @@ export default function CandidateBriefPage() {
               Candidate Brief
             </span>
           </div>
-          <div style={{ width: 1, height: 18, background: BORDER }} />
+          <div style={{ width: 1, height: 18, background: BORDER, marginLeft: 6, marginRight: 6 }} />
+
+          <button
+            onClick={handleExportWord}
+            disabled={exportingWord || exporting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              background: 'white', color: TEAL,
+              border: `1px solid ${TEAL}`, borderRadius: 8,
+              padding: '6.5px 14px', fontSize: 12.5, fontWeight: 600,
+              cursor: (exportingWord || exporting) ? 'not-allowed' : 'pointer',
+              fontFamily: SANS, opacity: (exportingWord || exporting) ? 0.75 : 1,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { if (!exportingWord && !exporting) e.currentTarget.style.background = '#F0F7F6' }}
+            onMouseLeave={e => { if (!exportingWord && !exporting) e.currentTarget.style.background = 'white' }}
+          >
+            {exportingWord
+              ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Exporting…</>
+              : <><FileText size={13} /> Export Word</>}
+          </button>
+
           <button
             onClick={handleExport}
-            disabled={exporting}
+            disabled={exporting || exportingWord}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
               background: TEAL, color: 'white',
-              border: 'none', borderRadius: 8,
+              border: '1px solid transparent', borderRadius: 8,
               padding: '7px 16px', fontSize: 12.5, fontWeight: 600,
-              cursor: exporting ? 'not-allowed' : 'pointer',
-              fontFamily: SANS, opacity: exporting ? 0.75 : 1,
+              cursor: (exporting || exportingWord) ? 'not-allowed' : 'pointer',
+              fontFamily: SANS, opacity: (exporting || exportingWord) ? 0.75 : 1,
               transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { if (!exporting) e.currentTarget.style.background = '#216158' }}
-            onMouseLeave={e => { if (!exporting) e.currentTarget.style.background = TEAL }}
+            onMouseEnter={e => { if (!exporting && !exportingWord) e.currentTarget.style.background = '#216158' }}
+            onMouseLeave={e => { if (!exporting && !exportingWord) e.currentTarget.style.background = TEAL }}
           >
             {exporting
               ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Exporting…</>
@@ -99,6 +168,6 @@ export default function CandidateBriefPage() {
 
       {/* ── Brief content — component handles its own bg + padding ── */}
       <CandidateBrief ref={briefRef} applicationId={appId} />
-    </div>
+    </div >
   )
 }
