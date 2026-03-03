@@ -50,7 +50,167 @@ export default function CandidateBriefPage() {
 
     setTimeout(() => {
       try {
-        const content = briefRef.current.innerHTML
+        const sourceNode = briefRef.current
+        const clone = sourceNode.cloneNode(true)
+
+        // --- 1. Inline all relevant computed styles to defeat Word's Dark Mode & CSS engine ---
+        const realElements = [sourceNode, ...sourceNode.querySelectorAll('*')]
+        const cloneElements = [clone, ...clone.querySelectorAll('*')]
+
+        const styleProps = [
+          'color', 'background-color', 'font-size', 'font-weight', 'font-family', 'line-height',
+          'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
+          'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+          'border-top', 'border-bottom', 'border-left', 'border-right',
+          'border-radius', 'text-transform', 'letter-spacing', 'text-align'
+        ]
+
+        for (let i = 0; i < realElements.length; i++) {
+          const real = realElements[i]
+          const cl = cloneElements[i]
+          const comp = window.getComputedStyle(real)
+
+          styleProps.forEach(p => {
+            const val = comp.getPropertyValue(p)
+            if (val && val !== 'rgba(0, 0, 0, 0)' && val !== 'transparent' && val !== '0px' && val !== 'none') {
+              cl.style.setProperty(p, val)
+            }
+          })
+
+          // Force colors to prevent MS Word Dark Mode inversion (dark mode flips white/black text unless explicitly set!)
+          const bg = comp.getPropertyValue('background-color')
+          const fg = comp.getPropertyValue('color')
+          if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') {
+            cl.style.setProperty('background-color', '#FFFFFF', 'important')
+          }
+          if (fg === 'rgb(0, 0, 0)' || fg === 'rgb(26, 26, 26)' || fg === 'rgb(51, 51, 51)') {
+            cl.style.setProperty('color', '#1A1A1A', 'important')
+          }
+        }
+
+        // Add proper spacing to skill tags and hide SVGs
+        cloneElements.forEach(cl => {
+          if (cl.classList && cl.classList.contains('skill-tag')) {
+            cl.innerHTML += '&nbsp;'
+            cl.style.display = 'inline-block'
+          }
+          if (cl.tagName === 'SVG' || cl.tagName === 'svg') {
+            cl.style.display = 'none'
+          }
+        })
+
+        // --- 2. Convert Flexbox Layouts to HTML Tables for MS Word ---
+
+        // .hero -> table
+        const heroes = clone.querySelectorAll('.hero')
+        heroes.forEach(hero => {
+          const table = document.createElement('table')
+          table.setAttribute('width', '100%')
+          table.setAttribute('border', '0')
+          table.setAttribute('cellpadding', '0')
+          table.setAttribute('cellspacing', '0')
+
+          const tr = document.createElement('tr')
+
+          const tdLeft = document.createElement('td')
+          tdLeft.setAttribute('valign', 'top')
+          const heroLeft = hero.querySelector('.hero-left')
+          if (heroLeft) tdLeft.appendChild(heroLeft.cloneNode(true))
+
+          const tdRight = document.createElement('td')
+          tdRight.setAttribute('valign', 'top')
+          tdRight.setAttribute('align', 'right')
+          const heroRight = hero.querySelector('.hero-right')
+          if (heroRight) tdRight.appendChild(heroRight.cloneNode(true))
+
+          tr.appendChild(tdLeft)
+          tr.appendChild(tdRight)
+          table.appendChild(tr)
+          hero.parentNode.replaceChild(table, hero)
+        })
+
+        // .profile-grid -> 3x3 table
+        const profileGrids = clone.querySelectorAll('.profile-grid')
+        profileGrids.forEach(grid => {
+          const table = document.createElement('table')
+          table.setAttribute('width', '100%')
+          table.setAttribute('border', '0')
+          table.setAttribute('cellpadding', '0')
+          table.setAttribute('cellspacing', '0')
+
+          const items = Array.from(grid.querySelectorAll('.profile-item'))
+          let tr
+          items.forEach((item, i) => {
+            if (i % 3 === 0) {
+              tr = document.createElement('tr')
+              table.appendChild(tr)
+            }
+            const td = document.createElement('td')
+            td.setAttribute('valign', 'top')
+            td.setAttribute('width', '33.33%')
+            td.innerHTML = item.innerHTML
+            td.style.cssText = item.style.cssText
+            tr.appendChild(td)
+          })
+          grid.parentNode.replaceChild(table, grid)
+        })
+
+        // .metrics-row -> 3 box table
+        const metricsRows = clone.querySelectorAll('.metrics-row')
+        metricsRows.forEach(row => {
+          const table = document.createElement('table')
+          table.setAttribute('width', '100%')
+          table.setAttribute('border', '0')
+          table.setAttribute('cellpadding', '0')
+          table.setAttribute('cellspacing', '0')
+
+          const tr = document.createElement('tr')
+          const items = Array.from(row.querySelectorAll('.metric-box'))
+          items.forEach(item => {
+            const td = document.createElement('td')
+            td.setAttribute('valign', 'top')
+            td.setAttribute('width', '33.33%')
+
+            const inner = document.createElement('div')
+            inner.innerHTML = item.innerHTML
+            inner.style.cssText = item.style.cssText
+            inner.style.margin = '0 6px'
+            td.appendChild(inner)
+            tr.appendChild(td)
+          })
+          table.appendChild(tr)
+          row.parentNode.replaceChild(table, row)
+        })
+
+        // Timeline items -> 2 column table
+        const eduRows = clone.querySelectorAll('.edu-row, .cert-item, .timeline-item')
+        eduRows.forEach(row => {
+          if (row.children.length === 2) {
+            const table = document.createElement('table')
+            table.setAttribute('width', '100%')
+            table.setAttribute('border', '0')
+            table.setAttribute('cellpadding', '0')
+            table.setAttribute('cellspacing', '0')
+
+            const tr = document.createElement('tr')
+            const tdLeft = document.createElement('td')
+            tdLeft.setAttribute('valign', 'top')
+            tdLeft.innerHTML = row.children[0].outerHTML
+
+            const tdRight = document.createElement('td')
+            tdRight.setAttribute('valign', 'top')
+            tdRight.setAttribute('align', 'right')
+            tdRight.innerHTML = row.children[1].outerHTML
+
+            tr.appendChild(tdLeft)
+            tr.appendChild(tdRight)
+            table.appendChild(tr)
+            row.innerHTML = ''
+            row.appendChild(table)
+          }
+        })
+
+        const content = clone.innerHTML
 
         const html = `
           <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -59,14 +219,14 @@ export default function CandidateBriefPage() {
             <title>Candidate_Brief</title>
             <style>
               ${briefStyles}
-              body { font-family: 'DM Sans', sans-serif; background: #FFF !important; }
-              .candidate-brief-wrapper { padding: 0 !important; background: #FFF !important; }
+              body { font-family: 'DM Sans', Arial, sans-serif; background: #FFFFFF !important; color: #1A1A1A !important; margin: 0; padding: 0; }
+              .candidate-brief-wrapper { padding: 24px !important; background: #FFFFFF !important; }
               .page { max-width: 100% !important; padding: 0 !important; gap: 14px; }
               .avatar span, .avatar svg { display: none !important; }
             </style>
           </head>
-          <body>
-            <div class="candidate-brief-wrapper">
+          <body style="background-color: #FFFFFF; color: #1A1A1A;">
+            <div class="candidate-brief-wrapper" style="background-color: #FFFFFF; color: #1A1A1A;">
               ${content}
             </div>
           </body>
