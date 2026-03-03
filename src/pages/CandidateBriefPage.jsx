@@ -29,7 +29,12 @@ export default function CandidateBriefPage() {
   const handlePrint = useReactToPrint({
     contentRef: briefRef,
     documentTitle: 'Candidate_Brief',
-    onBeforePrint: () => setExporting(true),
+    onBeforePrint: () => {
+      return new Promise((resolve) => {
+        setExporting(true)
+        setTimeout(resolve, 50)
+      })
+    },
     onAfterPrint: () => setExporting(false),
   })
 
