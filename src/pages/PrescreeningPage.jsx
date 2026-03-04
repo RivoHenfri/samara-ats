@@ -246,7 +246,10 @@ export default function PrescreeningPage() {
       <InjectStyles />
       <div style={s.centerFull}>
         <div style={{ ...s.completedCard, animation: 'fadeSlideUp 0.5s ease forwards' }}>
-          <div style={s.successLeaf}>🌿</div>
+          <div style={{ ...s.logoContainer, padding: '0 0 32px' }}>
+            <div style={{ ...s.logoSamara, fontSize: 32 }}>SAMARA</div>
+            <div style={{ ...s.logoLombok, fontSize: 10, marginTop: 4 }}>LOMBOK</div>
+          </div>
           <h2 style={{ fontFamily: T.display, fontSize: 30, fontWeight: 400, color: T.dark, margin: '0 0 12px', lineHeight: 1.2 }}>
             Thank you, {candidateName.split(' ')[0]}.
           </h2>
@@ -310,10 +313,10 @@ export default function PrescreeningPage() {
           <div style={{ animation: 'fadeSlideUp 0.4s ease forwards' }}>
             {/* Brand mark */}
             <div style={s.brandHeader}>
-              <div style={s.logoMark}>
-                <span style={{ fontSize: 22 }}>🌿</span>
+              <div style={s.logoContainer}>
+                <div style={s.logoSamara}>SAMARA</div>
+                <div style={s.logoLombok}>LOMBOK</div>
               </div>
-              <span style={s.brandName}>SAMARA LOMBOK</span>
             </div>
 
             {/* Welcome card */}
@@ -719,29 +722,29 @@ const s = {
     maxWidth: 600,
     padding: '0 20px 80px',
   },
-  brandHeader: {
+  logoContainer: {
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+    gap: 0,
+    color: '#2D3A26',
     padding: '32px 0 24px',
   },
-  logoMark: {
-    width: 36,
-    height: 36,
-    borderRadius: '50%',
-    background: T.sageLight,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoSamara: {
+    fontFamily: T.display,
+    fontSize: 48,
+    fontWeight: 400,
+    letterSpacing: '0.05em',
+    lineHeight: 1,
   },
-  brandName: {
-    fontFamily: T.body,
-    fontSize: 12,
-    fontWeight: 600,
-    letterSpacing: '0.18em',
-    color: T.dark,
-    textTransform: 'uppercase',
+  logoLombok: {
+    fontFamily: T.display,
+    fontSize: 14,
+    fontWeight: 400,
+    letterSpacing: '0.4em',
+    lineHeight: 1,
+    marginTop: 8,
+    marginLeft: '0.4em', // Centering offset for high tracking
   },
   welcomeCard: {
     background: T.white,
@@ -1018,17 +1021,6 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-  },
-  successLeaf: {
-    width: 64,
-    height: 64,
-    borderRadius: '50%',
-    background: T.sageLight,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 28,
-    marginBottom: 24,
   },
   goldDivider: {
     width: 40,
