@@ -398,6 +398,20 @@ export default function PrescreeningPage() {
                   />
                 ))}
 
+                {isLast && (
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: T.sageLight, padding: 16, borderRadius: 10, marginTop: 12 }}>
+                    <input
+                      type="checkbox"
+                      id="gdpr_consent"
+                      required
+                      style={{ marginTop: 4, width: 18, height: 18, accentColor: T.sage, cursor: 'pointer' }}
+                    />
+                    <label htmlFor="gdpr_consent" style={{ fontSize: 13, color: T.dark, fontFamily: T.body, lineHeight: 1.6, cursor: 'pointer' }}>
+                      <strong>Data Privacy Consent:</strong> By checking this box, I consent to the collection, processing, and storage of my personal data for recruitment purposes in accordance with the Samara Lombok Data Privacy Policy.
+                    </label>
+                  </div>
+                )}
+
                 {/* Navigation */}
                 <div style={s.navRow}>
                   <button type="button" onClick={goPrev} style={s.btnBack}>
