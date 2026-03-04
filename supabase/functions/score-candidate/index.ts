@@ -14,7 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Anthropic details
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_KEY') || Deno.env.get('ANTHROPIC_API_KEY')
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
-const MODEL_VERSION = 'claude-sonnet-4-6-20260217' // Current latest Sonnet 4.6
+const MODEL_VERSION = 'claude-sonnet-4-6' // Latest available in the workspace
 
 // Build prompt (ported from original frontend logic)
 function buildPrompt(app: any, parsedCV: any = null, scoringCriteria: any = null, weights: any = null) {
@@ -141,8 +141,17 @@ Rules:
 
 let applicationId: string | null = null
 let supabaseAdmin: any = null
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req: Request) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const payload = await req.json()
 
@@ -154,7 +163,10 @@ serve(async (req: Request) => {
     const roleId = record.role_id
 
     if (!applicationId) {
-      return new Response(JSON.stringify({ error: 'Missing logic application id' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'Missing logic application id' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
     supabaseAdmin = createClient(
@@ -227,8 +239,19 @@ serve(async (req: Request) => {
     const anthropicData = await anthropicRes.json()
     let scoreObj
     try {
-      const raw = anthropicData.content[0].text.trim().replace(/^```json\n ?| ```$/g, '').trim()
-      scoreObj = JSON.parse(raw)
+      let rawText: string = anthropicData.content[0].text.trim()
+
+      // Strategy 1: Strip markdown code fences (```json ... ``` or ``` ... ```)
+      rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+
+      // Strategy 2: Extract first JSON object from the text if still not valid
+      // This handles cases where the model adds prose before/after the JSON
+      if (!rawText.startsWith('{')) {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) rawText = jsonMatch[0]
+      }
+
+      scoreObj = JSON.parse(rawText)
 
       // Ensure overall_score consistency
       if (scoreObj.must_have_score != null && scoreObj.nice_to_have_score != null) {
@@ -239,24 +262,31 @@ serve(async (req: Request) => {
           (scoreObj.salary_alignment_score || 0) * w.salary_alignment
         )
       }
-    } catch (err) {
-      throw new Error('Failed to parse Claude output structurally')
+    } catch (err: any) {
+      throw new Error(`Failed to parse Claude output: ${err?.message || err}. Raw: ${anthropicData?.content?.[0]?.text?.substring(0, 500)}`)
     }
 
-    // 5. Persist the score back into the database
+    // 5. Persist the score back — delete any existing row, then insert fresh
+    await supabaseAdmin
+      .from('application_scores')
+      .delete()
+      .eq('application_id', applicationId)
+
     const { error: scoreErr } = await supabaseAdmin
       .from('application_scores')
-      .upsert({
+      .insert({
         application_id: applicationId,
-        tenant_id: tenantId,
         overall_score: scoreObj.overall_score,
         must_have_score: scoreObj.must_have_score,
         nice_to_have_score: scoreObj.nice_to_have_score,
         salary_alignment_score: scoreObj.salary_alignment_score,
         risk_flags: scoreObj.risk_flags || [],
         executive_summary: scoreObj.executive_summary,
-        interview_focus: scoreObj.interview_focus || []
-      }, { onConflict: 'application_id' })
+        interview_focus: scoreObj.interview_focus || [],
+        model_version: MODEL_VERSION,
+        prompt_version: 'v1',
+        scored_by_name: 'Samara AI'
+      })
 
     if (scoreErr) throw new Error(`Failed to save score db: ${scoreErr.message}`)
 
@@ -267,7 +297,7 @@ serve(async (req: Request) => {
       .eq('id', applicationId)
 
     return new Response(JSON.stringify({ success: true, applicationId }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 
   } catch (error: any) {
@@ -307,7 +337,7 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ error: String(error.message) }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })

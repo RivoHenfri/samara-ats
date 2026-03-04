@@ -188,12 +188,6 @@ export async function autoPreparePrescreen(applicationId) {
       return null
     }
 
-    // Update application prescreening_status
-    await supabase
-      .from('applications')
-      .update({ prescreening_status: 'pending' })
-      .eq('id', applicationId)
-
     const formUrl = `${window.location.origin}/prescreening/${response.access_token}`
     return { token: response.access_token, formUrl }
   } catch (err) {

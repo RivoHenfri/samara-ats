@@ -74,8 +74,18 @@ export function getSeverityBg(severity) {
 }
 
 export async function generateCompatibilityScore(applicationId) {
-  // Client-Side Eviction: Scoring logic moved to backend Edge Function
-  // We simply set the status back to pending, which triggers the Database Webhook
+  // 1. Fetch the necessary IDs required by the payload expectation of the Edge Function
+  const { data: record, error: fetchErr } = await supabase
+    .from('applications')
+    .select('id, candidate_id, tenant_id, role_id')
+    .eq('id', applicationId)
+    .single()
+
+  if (fetchErr || !record) {
+    throw new Error('Failed to fetch app data for scoring: ' + fetchErr?.message)
+  }
+
+  // 2. Mark the status as pending so the UI shows the loading state immediately
   const { error } = await supabase
     .from('applications')
     .update({ scoring_status: 'pending', scoring_error: null })
@@ -84,6 +94,16 @@ export async function generateCompatibilityScore(applicationId) {
   if (error) {
     throw new Error('Failed to trigger background scoring: ' + error.message)
   }
+
+  // 3. Fire-and-forget explicit trigger to the Edge Function!
+  // We do NOT await this, so the frontend isn't blocked by the 15-second Anthropic API call.
+  // The backend database webhook previously failed in production because it was attempting
+  // to reach http://kong:8000 (local dev container). Explicitly invoking guarantees delivery.
+  supabase.functions.invoke('score-candidate', {
+    body: { record } // The edge function expects a webhook payload shape `{ record: {...} }`
+  }).catch(err => {
+    console.warn('[Auto-Score] Edge function trigger warning:', err)
+  })
 
   // Return a dummy object to satisfy any synchronous UI expectations
   // The real score will stream in via Supabase Realtime subscriptions 

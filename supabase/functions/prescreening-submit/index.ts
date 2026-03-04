@@ -111,12 +111,6 @@ serve(async (req: Request) => {
           started_at: new Date().toISOString(),
         })
         .eq('id', prescreen.id)
-
-      // Also update application prescreening_status
-      await supabaseAdmin
-        .from('applications')
-        .update({ prescreening_status: 'started' })
-        .eq('id', prescreen.applications.id)
     }
 
     return json({
@@ -188,12 +182,6 @@ serve(async (req: Request) => {
       console.error('prescreening_responses update error:', updateErr)
       return json({ error: 'Failed to save responses' }, 500)
     }
-
-    // Update application prescreening_status
-    await supabaseAdmin
-      .from('applications')
-      .update({ prescreening_status: 'completed' })
-      .eq('id', prescreen.applications.id)
 
     // Sync salary fields back to candidates table (only if provided and currently empty)
     const candidateId = prescreen.applications.candidates.id

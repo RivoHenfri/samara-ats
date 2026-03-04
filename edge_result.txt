@@ -1,0 +1,17 @@
+﻿node:internal/deps/undici/undici:16416
+      Error.captureStackTrace(err);
+            ^
+System.Management.Automation.RemoteException
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:16416:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/Axioo%20Pongo/OneDrive/Desktop/samara-ats/test_edge.js:6:13 {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 104.18.38.10:443, 172.64.149.246:443, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:1946:23)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:1912:35)
+      at process.processImmediate (node:internal/timers:504:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+System.Management.Automation.RemoteException
+Node.js v24.13.1

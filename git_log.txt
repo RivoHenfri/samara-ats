@@ -1,0 +1,5 @@
+﻿1a0d0b7 feat(candidate-brief): integrate react-to-print and add View Brief links
+6a29026 Merge remote-tracking branch 'origin/claude/beautiful-ramanujan'
+4c7d665 feat: add Role Summary page with screening verdicts and Excel export
+ff419ea fix webhook url
+d658352 Merge remote-tracking branch 'origin/claude/beautiful-ramanujan'

@@ -54,16 +54,11 @@ export default function PrescreeningNotifyModal({ app, formUrl, onClose }) {
         status: 'sent',
       })
 
-      // Update prescreening status
+      // Update prescreening status in responses table
       await supabase
         .from('prescreening_responses')
         .update({ status: 'sent', sent_at: new Date().toISOString() })
         .eq('application_id', app.id)
-
-      await supabase
-        .from('applications')
-        .update({ prescreening_status: 'sent' })
-        .eq('id', app.id)
     } catch (err) {
       console.warn('[PrescreeningNotifyModal] log failed:', err?.message)
     }

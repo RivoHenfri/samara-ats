@@ -1,0 +1,52 @@
+﻿On branch main
+Your branch and 'origin/main' have diverged,
+and have 1 and 4 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+No commands done.
+Next command to do (1 remaining command):
+   pick 1a0d0b7 # feat(candidate-brief): integrate react-to-print and add View Brief links
+  (use "git rebase --edit-todo" to view and edit)
+You are currently editing a commit while rebasing branch 'main' on '4080aa1'.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   src/components/CandidateCard.jsx
+	modified:   src/components/CandidatesList.jsx
+	modified:   src/pages/CandidateBriefPage.jsx
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+	modified:   .claude/worktrees/adoring-euclid (modified content)
+	modified:   .claude/worktrees/amazing-poincare (modified content)
+	modified:   .claude/worktrees/beautiful-ramanujan (modified content, untracked content)
+	modified:   .claude/worktrees/clever-austin (modified content)
+	modified:   .claude/worktrees/ecstatic-moser (modified content)
+	modified:   .claude/worktrees/focused-aryabhata (modified content, untracked content)
+	modified:   .claude/worktrees/gracious-germain (modified content)
+	modified:   .claude/worktrees/kind-bhabha (untracked content)
+	modified:   .claude/worktrees/laughing-montalcini (untracked content)
+	modified:   .claude/worktrees/lucid-galileo (modified content)
+	modified:   .claude/worktrees/naughty-spence (modified content, untracked content)
+	modified:   .claude/worktrees/recursing-mclean (untracked content)
+	modified:   .claude/worktrees/sad-germain (untracked content)
+	modified:   .claude/worktrees/sharp-jones (untracked content)
+	deleted:    playwright.config.ts
+	deleted:    src/components/CandidateBrief.css
+	deleted:    src/components/ErrorBoundary.jsx
+	deleted:    src/lib/__tests__/pipelineVelocity.test.js
+	deleted:    src/lib/__tests__/stagnationMonitor.test.js
+	deleted:    test-anthropic.js
+	deleted:    test-proxy.js
+	deleted:    tests/example.spec.ts
+	deleted:    tests/smoke.spec.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	src/lib/whatsappUtils.js
+	status.txt
+
