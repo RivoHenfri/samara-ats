@@ -9,18 +9,24 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'azure',
-      options: {
-        scopes: 'email',
-        redirectTo: window.location.origin
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          scopes: 'email',
+          redirectTo: window.location.origin
+        }
+      })
+      if (error) {
+        setError(error.message)
+        setLoading(false)
       }
-    })
-    if (error) {
-      setError(error.message)
+      // oauth redirects away, so loading will stay true until unload if successful
+    } catch (err) {
+      console.error(err)
+      setError("Network request blocked. Please disable any ad-blockers or tracking protection (shield icon) and try again.")
       setLoading(false)
     }
-    // oauth redirects away, so loading will stay true until unload
   }
 
   return (
