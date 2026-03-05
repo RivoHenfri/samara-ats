@@ -28,6 +28,9 @@ export function AuthProvider({ children }) {
             if (data) setProfile(data)
           })
       }
+    }).catch(err => {
+      console.error("Auth session error:", err)
+      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
